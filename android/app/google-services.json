@@ -1,0 +1,29 @@
+{
+    "project_info": {
+        "project_number": "1060561916082",
+        "project_id": "kowopay",
+        "storage_bucket": "kowopay.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:1060561916082:android:7c6dff06730d9bf53cb9ab",
+                "android_client_info": {
+                    "package_name": "com.example.kowopay"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyCA7_NDPJPd4iSBIHYBAnhn5c3jzdKPibQ"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}
