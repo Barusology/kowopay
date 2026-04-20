@@ -13,14 +13,21 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   Timer? _timer;
 
+  // FIX: 5 seconds is appropriate for an onboarding splash.
+  // The original timer was set to Duration(minutes: 3) while the UI label read
+  // "(Auto-advance in 60 seconds)" — a 3× mismatch that made users think the
+  // app was frozen.
+  static const _autoAdvanceSeconds = 5;
+
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(minutes: 3), () {
-      if (mounted) {
-        _completeOnboarding(context);
-      }
-    });
+    _timer = Timer(
+      const Duration(seconds: _autoAdvanceSeconds),
+      () {
+        if (mounted) _completeOnboarding();
+      },
+    );
   }
 
   @override
@@ -29,10 +36,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  Future<void> _completeOnboarding(BuildContext context) async {
+  Future<void> _completeOnboarding() async {
+    // Persist the flag BEFORE navigating so the check in main() sees it.
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_done', true);
-    if (context.mounted) {
+
+    // Check mounted after the async gap — the timer might fire just as the
+    // user taps the button, so both code paths arrive here.
+    if (mounted) {
       Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
   }
@@ -49,7 +60,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Expanded(
                 child: Center(
                   child: Image.asset(
-                    'lib/assets/onboarding.jpg',
+                    // FIX: asset path without the lib/ prefix.
+                    // pubspec.yaml should list: assets: - assets/onboarding.jpg
+                    // and the file should live at assets/onboarding.jpg.
+                    'assets/onboarding.jpg',
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -70,25 +84,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 style: TextStyle(fontSize: 16, color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 10),
-              const Text(
-                '(Auto-advance in 60 seconds)',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+              const SizedBox(height: 8),
+              // FIX: label now matches the actual timer duration.
+              Text(
+                '(Auto-advances in $_autoAdvanceSeconds seconds)',
+                style:
+                    const TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 48),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => _completeOnboarding(context),
+                  onPressed: _completeOnboarding,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Start Now', style: TextStyle(fontSize: 18)),
+                  child: const Text('Start Now',
+                      style: TextStyle(fontSize: 18)),
                 ),
               ),
             ],

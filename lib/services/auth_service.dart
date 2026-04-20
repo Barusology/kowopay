@@ -1,89 +1,174 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:async';
+import 'package:flutter/foundation.dart' show debugPrint;
 
-// Mock User class since we can't easily instantiate a real User
-class MockUser {
-  final String email;
-  final String uid;
-  MockUser({required this.email, required this.uid});
+// ─────────────────────────────────────────────────────────────────────────────
+// ABSTRACT INTERFACE
+// All widgets and providers depend on AuthRepository, never on the concrete
+// FirebaseAuthService.  This makes the auth layer fully testable without
+// Firebase and lets you swap implementations (Google, Apple, biometric) without
+// touching any consumer.
+// ─────────────────────────────────────────────────────────────────────────────
+
+abstract class AuthRepository {
+  /// Stream that emits the current [User] or null on sign-out.
+  Stream<User?> get authStateChanges;
+
+  /// The synchronously available current user (may lag one tick behind the
+  /// stream).  Prefer watching [authStateProvider] in widgets.
+  User? get currentUser;
+
+  Future<UserCredential> signInWithEmailAndPassword(
+      String email, String password);
+
+  Future<UserCredential> registerWithEmailAndPassword(
+      String email, String password);
+
+  Future<void> signOut();
+
+  /// Force-refresh the Firebase ID token.  Call when the app returns to
+  /// foreground to detect revoked / disabled accounts before any financial
+  /// operation is attempted.
+  Future<void> refreshToken();
+
+  /// Release any resources held by this service (stream subscriptions, etc.).
+  void dispose();
 }
 
-class AuthService {
-  final FirebaseAuth? _auth;
-  final bool _isMock;
+// ─────────────────────────────────────────────────────────────────────────────
+// FIREBASE IMPLEMENTATION
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // Stream controller for mock auth state
-  // We use RxDart BehaviorSubject behavior manually or just a simple stream that yields current value
-  // But strictly, Stream.value(null) or similar is needed for the first listen.
-  
-  // ignore: close_sinks
-  final _mockUserStreamController = StreamController<User?>.broadcast();
-  User? _mockUser;
+class FirebaseAuthService implements AuthRepository {
+  FirebaseAuthService({FirebaseAuth? auth})
+      : _auth = auth ?? FirebaseAuth.instance;
 
-  AuthService({bool isMock = false}) 
-      : _auth = isMock ? null : FirebaseAuth.instance,
-        _isMock = isMock {
-     if (_isMock) {
-        // Emit initial state (null = logged out) slightly delayed to simulate startup or just rely on the controller logic if we were using a BehaviorSubject.
-        // But for StreamController, we can't easily "replay" subscription.
-        // Better approach for StreamProvider is to return a Stream that starts with a value.
-     }
+  final FirebaseAuth _auth;
+
+  @override
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  @override
+  User? get currentUser => _auth.currentUser;
+
+  @override
+  Future<UserCredential> signInWithEmailAndPassword(
+      String email, String password) async {
+    // Intentionally do NOT trim the password — spaces may be intentional.
+    return _auth.signInWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    );
+    // FirebaseAuthException is not caught here — it should propagate to the UI
+    // layer so the correct error code can be mapped to a user-friendly message.
   }
 
-  /*
-  Stream<User?> get authStateChanges {
-    if (_isMock) {
-      return Stream.value(_mockUser).concatWith([_mockUserStreamController.stream]);
-    }
-    // ...
-  }
-  */
-  // Since we don't have rxdart listed, let's use standard Dart streams:
-  // Use async* to ensure initial value is emitted
-  Stream<User?> get authStateChanges async* {
-     if (_isMock) {
-       yield _mockUser;
-       yield* _mockUserStreamController.stream;
-     } else {
-       yield* _auth!.authStateChanges();
-     }
+  @override
+  Future<UserCredential> registerWithEmailAndPassword(
+      String email, String password) async {
+    return _auth.createUserWithEmailAndPassword(
+      email: email.trim(),
+      password: password, // never trim passwords
+    );
   }
 
-  // Get current user
-  User? get currentUser => 
-      _isMock ? _mockUser : _auth!.currentUser;
-
-  // Sign in
-  Future<void> signIn(String email, String password) async {
-    if (_isMock) {
-       // Simulate network delay
-       await Future.delayed(const Duration(seconds: 1));
-       if (email == "error@test.com") throw Exception("Mock Login Failed");
-       // We can't return a real User object easily without casting hacks, 
-       // so for this mock we might need to change the Provider type or generic.
-       // BUT, to keep it simple and safe:
-       // We will rely on the fact that we might NOT need this if we fix Firebase.
-       // However, to unblock the user, let's just allow the UI to load.
-       // Since 'User' is from firebase_auth, we can't create it manually easily.
-       // Recommendation: If Firebase fails, we just warn the user.
-       throw Exception("Firebase not configured. Cannot login.");
-    } else {
-      await _auth!.signInWithEmailAndPassword(email: email, password: password);
-    }
-  }
-
-  // Sign up
-  Future<void> signUp(String email, String password) async {
-    if (_isMock) {
-      throw Exception("Firebase not configured. Cannot register.");
-    } else {
-      await _auth!.createUserWithEmailAndPassword(email: email, password: password);
-    }
-  }
-
-  // Sign out
+  @override
   Future<void> signOut() async {
-     if (_isMock) return;
-    await _auth!.signOut();
+    await _auth.signOut();
   }
+
+  @override
+  Future<void> refreshToken() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    try {
+      await user.getIdToken(true); // forceRefresh: true
+    } on FirebaseAuthException catch (e) {
+      debugPrint('[AuthService] Token refresh failed: ${e.code}');
+      // Force re-login for these codes — do NOT let stale sessions persist in
+      // a financial app.
+      if (e.code == 'user-disabled' || e.code == 'user-token-expired') {
+        await signOut();
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  void dispose() {
+    // FirebaseAuth streams are managed by the SDK — nothing custom to close.
+    // Add any custom StreamController.close() calls here if you extend this.
+    debugPrint('[AuthService] disposed');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEST DOUBLE
+// Use this in widget tests via ProviderScope overrides.  Zero Firebase deps.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class FakeAuthService implements AuthRepository {
+  FakeAuthService({this.fakeUser});
+
+  final User? fakeUser;
+
+  @override
+  Stream<User?> get authStateChanges => Stream.value(fakeUser);
+
+  @override
+  User? get currentUser => fakeUser;
+
+  @override
+  Future<UserCredential> signInWithEmailAndPassword(
+      String email, String password) async {
+    throw UnimplementedError(
+        'Stub signIn — override in tests that need sign-in behaviour.');
+  }
+
+  @override
+  Future<UserCredential> registerWithEmailAndPassword(
+      String email, String password) async {
+    throw UnimplementedError('Stub register');
+  }
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<void> refreshToken() async {}
+
+  @override
+  void dispose() {}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER — map Firebase error codes to user-facing strings
+// Place this here so both LoginPage and RegisterPage can import it from one
+// location without duplicating the switch statement.
+// ─────────────────────────────────────────────────────────────────────────────
+
+String mapAuthError(Object error) {
+  if (error is FirebaseAuthException) {
+    switch (error.code) {
+      case 'user-not-found':
+        return 'No account found with this email address.';
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Incorrect password. Please try again.';
+      case 'too-many-requests':
+        return 'Too many failed attempts. Please wait a moment and try again.';
+      case 'user-disabled':
+        return 'This account has been disabled. Please contact support.';
+      case 'email-already-in-use':
+        return 'An account with this email already exists.';
+      case 'weak-password':
+        return 'Password is too weak. Please choose a stronger password.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'network-request-failed':
+        return 'Network error. Please check your connection and try again.';
+      default:
+        return 'Something went wrong. Please try again.';
+    }
+  }
+  return 'An unexpected error occurred. Please try again.';
 }

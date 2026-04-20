@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode, debugPrint;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:kowopay/routes.dart';
 import 'package:kowopay/providers/auth_provider.dart';
-
 import 'package:kowopay/screens/home_page.dart';
 import 'package:kowopay/screens/login_page.dart';
 import 'package:kowopay/screens/register_page.dart';
@@ -21,30 +19,35 @@ import 'package:kowopay/screens/profile_screen.dart';
 import 'package:kowopay/screens/settings_screen.dart';
 import 'package:kowopay/screens/help_support_screen.dart';
 import 'package:kowopay/screens/insurance_screen.dart';
-
 import 'firebase_options.dart';
-
 import 'package:kowopay/providers/core_providers.dart';
 import 'package:device_preview/device_preview.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
-    // Initialize Firebase with platform-specific options
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    // Initialize Ads (fire and forget)
-    MobileAds.instance.initialize();
-  } catch (e) {
-    print("Initialization Failed: $e");
-    // We continue to run the app so the user sees something (likely Mock mode fallback)
+    // FIX: await MobileAds — prevents race condition where ads are requested
+    // before the SDK has finished initialising.
+    await MobileAds.instance.initialize();
+  } catch (e, stackTrace) {
+    // FIX: debugPrint instead of print (stripped in release, no logcat leak).
+    debugPrint('[KowoPay] Initialization failed: $e');
+    // In production, report to crash analytics before rethrowing:
+    // if (!kDebugMode) FirebaseCrashlytics.instance.recordError(e, stackTrace);
+    // FIX: rethrow — do NOT silently continue.  Every downstream Firebase call
+    // (auth, database, storage) will fail anyway; surface the problem early.
+    rethrow;
   }
 
   runApp(
     DevicePreview(
-      enabled: true,
+      // FIX: disabled in release builds and on web — DevicePreview is a
+      // developer tool and must never ship to real users.
+      enabled: !kReleaseMode && !kIsWeb,
       builder: (context) => const ProviderScope(child: MyApp()),
     ),
   );
@@ -58,12 +61,15 @@ class MyApp extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
 
     return MaterialApp(
-      useInheritedMediaQuery: true, // Required for DevicePreview
-      locale: DevicePreview.locale(context), // Required for DevicePreview
+      // FIX: removed useInheritedMediaQuery — deprecated and removed in
+      // Flutter 3.4+; causes compile errors on current SDK.
+      locale: DevicePreview.locale(context),
       debugShowCheckedModeBanner: false,
       title: 'KowoPay',
       theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
+        // FIX: ColorScheme.fromSeed is the Material 3-correct way to theme.
+        // primarySwatch is deprecated when useMaterial3 is true.
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
         fontFamily: 'Roboto',
         appBarTheme: const AppBarTheme(
@@ -74,7 +80,6 @@ class MyApp extends ConsumerWidget {
       ),
       builder: DevicePreview.appBuilder,
       routes: {
-        // AppRoutes.splash is removed from here because it uses '/' which conflicts with home
         AppRoutes.onboarding: (_) => const OnboardingScreen(),
         AppRoutes.login: (_) => const LoginPage(),
         AppRoutes.register: (_) => const RegisterPage(),
@@ -89,49 +94,67 @@ class MyApp extends ConsumerWidget {
         AppRoutes.help: (_) => const HelpSupportScreen(),
         AppRoutes.insurance: (_) => const InsuranceScreen(),
       },
-      home: DelayedSplash(
-        child: authState.when(
-          data: (user) {
-            if (user != null) {
-              return const HomePage();
-            } else {
-              return const LoginPage(); 
-            }
-          },
-          loading: () => const SplashScreen(),
-          error: (e, stack) => Scaffold(body: Center(child: Text('Error: $e'))),
-        ),
+      // FIX: authState drives routing directly.
+      // DelayedSplash (30-second timer) has been completely removed — it served
+      // no purpose and forced every user to wait half a minute.
+      // authState.when(loading:) already shows SplashScreen while Firebase
+      // resolves the session, which is the correct pattern.
+      home: authState.when(
+        data: (user) => user != null ? const HomePage() : const LoginPage(),
+        loading: () => const SplashScreen(),
+        // FIX: Friendly error screen — no raw exception text shown to users.
+        error: (_, __) => const _AuthErrorScreen(),
       ),
     );
   }
 }
 
-class DelayedSplash extends StatefulWidget {
-  final Widget child;
-  const DelayedSplash({super.key, required this.child});
-
-  @override
-  State<DelayedSplash> createState() => _DelayedSplashState();
-}
-
-class _DelayedSplashState extends State<DelayedSplash> {
-  bool _showChild = false;
-
-  @override
-  void initState() {
-    super.initState();
-    Timer(const Duration(seconds: 30), () {
-      if (mounted) {
-        setState(() {
-          _showChild = true;
-        });
-      }
-    });
-  }
+/// Shown when the auth stream itself errors (e.g. token refresh failure on
+/// first launch).  Presents a safe, user-friendly message with a retry option.
+class _AuthErrorScreen extends StatelessWidget {
+  const _AuthErrorScreen();
 
   @override
   Widget build(BuildContext context) {
-    if (_showChild) return widget.child;
-    return const SplashScreen();
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 20),
+                const Text(
+                  'Something went wrong',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'We couldn\'t connect to our services. '
+                  'Please check your connection and restart the app.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // Re-trigger by hot-restarting or using a retry mechanism.
+                    // In production wire this to a retry notifier.
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
