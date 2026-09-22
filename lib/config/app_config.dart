@@ -1,9 +1,15 @@
 class AppConfig {
   const AppConfig._();
 
-  static const geminiApiKey = String.fromEnvironment('GEMINI_API_KEY');
   static const flutterwavePublicKey = String.fromEnvironment(
     'FLUTTERWAVE_PUBLIC_KEY',
+  );
+  static const flutterwaveRedirectUrl = String.fromEnvironment(
+    'FLUTTERWAVE_REDIRECT_URL',
+  );
+  static const flutterwaveTestMode = bool.fromEnvironment(
+    'FLUTTERWAVE_TEST_MODE',
+    defaultValue: true,
   );
 
   static String requireValue(String name, String value) {

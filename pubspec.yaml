@@ -41,7 +41,6 @@ dependencies:
   flutter_riverpod: ^2.6.1
   email_validator: ^3.0.0
   flutterwave_standard: ^1.0.6
-  google_generative_ai: ^0.4.6
   intl: ^0.20.2
   uuid: ^4.2.2
   firebase_database: ^12.1.1

@@ -12,13 +12,16 @@ final paymentServiceProvider = Provider<PaymentService>((ref) {
       'FLUTTERWAVE_PUBLIC_KEY',
       AppConfig.flutterwavePublicKey,
     ),
+    redirectUrl: AppConfig.requireValue(
+      'FLUTTERWAVE_REDIRECT_URL',
+      AppConfig.flutterwaveRedirectUrl,
+    ),
+    isTestMode: AppConfig.flutterwaveTestMode,
   );
 });
 
 final aiServiceProvider = Provider<AIService>((ref) {
-  return AIService(
-    apiKey: AppConfig.requireValue('GEMINI_API_KEY', AppConfig.geminiApiKey),
-  );
+  return AIService();
 });
 
 final databaseServiceProvider = Provider<DatabaseService>((ref) {

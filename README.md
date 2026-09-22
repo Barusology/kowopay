@@ -168,8 +168,11 @@ flutter build web
 
 This app integrates with external services and credentials. For production use, ensure that:
 
-- Gemini and Flutterwave values are supplied at build time, never committed:
-  `flutter run --dart-define=GEMINI_API_KEY=... --dart-define=FLUTTERWAVE_PUBLIC_KEY=...`
+- Flutterwave test credentials and redirect URL are supplied at build time,
+  never committed:
+  `flutter run --dart-define=FLUTTERWAVE_PUBLIC_KEY=... --dart-define=FLUTTERWAVE_REDIRECT_URL=...`
+- Gemini keys must not be supplied to the app. Financial advice is disabled
+  until an authenticated server-side endpoint proxies Gemini requests.
 - Firebase config is environment-specific
 - Payment provider credentials are not committed to source control
 - Environment-specific builds are isolated from development settings
@@ -179,7 +182,9 @@ Firebase client API keys in `firebase_options.dart`, `google-services.json`, and
 client applications. They are not authorization secrets; protect the project
 with Firebase Authentication, Security Rules, API restrictions, and App Check.
 Rotate any credentials that were previously committed and review provider usage
-and quotas after rotation.
+and quotas after rotation. The app defaults Flutterwave to test mode and must
+not be switched to live mode until server-side webhook/signature verification
+and transaction settlement are implemented.
 
 ## Contributing
 

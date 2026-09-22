@@ -11,13 +11,16 @@
 
 ## Remediation completed
 
-- Gemini and Flutterwave values now come from `--dart-define` values rather than
-  committed Dart constants.
+- Gemini is no longer initialized from the client; it must be accessed through
+  an authenticated server-side endpoint.
+- Flutterwave test credentials and redirect URLs come from `--dart-define`
+  values rather than committed Dart constants.
 - Missing runtime configuration fails explicitly.
 - Balance deduction and audit logging now happen in one Realtime Database
   transaction.
 - The fake withdrawal success path now fails explicitly until a trusted backend
   integration is available.
+- CI now includes repository secret scanning.
 - CI now enforces targeted formatting, warnings-free analysis, and Flutter tests.
 - The previously committed Gemini credential should be revoked and rotated.
 

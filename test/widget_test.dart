@@ -17,11 +17,18 @@ void main() {
     });
   });
 
-  test('AIService rejects an absent API key', () {
-    expect(() => AIService(apiKey: ''), throwsA(isA<StateError>()));
+  test('AIService does not accept client-side credentials', () {
+    expect(AIService(), isA<AIService>());
   });
 
-  test('PaymentService rejects an absent public key', () {
-    expect(() => PaymentService(publicKey: ''), throwsA(isA<StateError>()));
+  test('PaymentService rejects incomplete configuration', () {
+    expect(
+      () => PaymentService(
+        publicKey: '',
+        redirectUrl: '',
+        isTestMode: true,
+      ),
+      throwsA(isA<StateError>()),
+    );
   });
 }

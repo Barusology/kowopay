@@ -3,12 +3,24 @@ import 'package:flutterwave_standard/flutterwave.dart';
 
 class PaymentService {
   final String publicKey;
+  final String redirectUrl;
+  final bool isTestMode;
 
-  PaymentService({required this.publicKey}) {
+  PaymentService({
+    required this.publicKey,
+    required this.redirectUrl,
+    required this.isTestMode,
+  }) {
     if (publicKey.trim().isEmpty) {
       throw StateError(
         'FLUTTERWAVE_PUBLIC_KEY is not configured. '
         'Provide it with --dart-define=FLUTTERWAVE_PUBLIC_KEY=...',
+      );
+    }
+    if (redirectUrl.trim().isEmpty) {
+      throw StateError(
+        'FLUTTERWAVE_REDIRECT_URL is not configured. '
+        'Provide it with --dart-define=FLUTTERWAVE_REDIRECT_URL=...',
       );
     }
   }
@@ -31,13 +43,13 @@ class PaymentService {
     final Flutterwave flutterwave = Flutterwave(
       publicKey: publicKey,
       currency: "NGN",
-      redirectUrl: "https://google.com",
+      redirectUrl: redirectUrl,
       txRef: txRef,
       amount: amount,
       customer: customer,
       paymentOptions: "card, payattitude, barter, bank transfer, ussd",
       customization: Customization(title: "KowoPay Deposit"),
-      isTestMode: true,
+      isTestMode: isTestMode,
     );
 
     try {
