@@ -80,7 +80,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   Center(
                     child: Image.asset(
                       // FIX: standard asset path — no lib/ prefix.
-                      'assets/kowopay.jpg',
+                      'lib/assets/kowopay.jpg',
                       width: 100,
                       height: 100,
                     ),

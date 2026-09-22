@@ -23,11 +23,7 @@ void main() {
 
   test('PaymentService rejects incomplete configuration', () {
     expect(
-      () => PaymentService(
-        publicKey: '',
-        redirectUrl: '',
-        isTestMode: true,
-      ),
+      () => PaymentService(publicKey: '', redirectUrl: '', isTestMode: true),
       throwsA(isA<StateError>()),
     );
   });

@@ -63,7 +63,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     // FIX: asset path without the lib/ prefix.
                     // pubspec.yaml should list: assets: - assets/onboarding.jpg
                     // and the file should live at assets/onboarding.jpg.
-                    'assets/onboarding.jpg',
+                    'lib/assets/onboarding.jpg',
                     fit: BoxFit.contain,
                   ),
                 ),

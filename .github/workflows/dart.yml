@@ -46,5 +46,12 @@ jobs:
       - name: Analyze project source
         run: flutter analyze --fatal-warnings --no-fatal-infos
 
-      - name: Run tests
-        run: flutter test
+      - name: Run tests with coverage
+        run: flutter test --coverage
+
+      - name: Enforce coverage threshold
+        shell: bash
+        run: |
+          total=$(awk -F: '/^LF:/ { lines += $2 } /^LH:/ { hit += $2 } END { if (lines == 0) exit 1; printf "%.0f", (hit / lines) * 100 }' coverage/lcov.info)
+          echo "Line coverage: ${total}%"
+          test "$total" -ge 35
