@@ -1,6 +1,7 @@
 // File generated manually based on provided google-services.json
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
@@ -36,7 +37,8 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyCA7_NDPJPd4iSBIHYBAnhn5c3jzdKPibQ',
-    appId: '1:1060561916082:web:placeholder', // Placeholder - User may need to update this from Firebase Console (Project Settings > General > Web Apps)
+    appId:
+        '1:1060561916082:web:placeholder', // Placeholder - User may need to update this from Firebase Console (Project Settings > General > Web Apps)
     messagingSenderId: '1060561916082',
     projectId: 'kowopay',
     authDomain: 'kowopay.firebaseapp.com',

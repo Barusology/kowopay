@@ -94,8 +94,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   child: photoUrl == null
                       ? Text(
                           email.isNotEmpty ? email[0].toUpperCase() : 'U',
-                          style:
-                              const TextStyle(color: Colors.deepPurple),
+                          style: const TextStyle(color: Colors.deepPurple),
                         )
                       : null,
                 ),
@@ -106,14 +105,19 @@ class _HomePageState extends ConsumerState<HomePage> {
           body: _pages[_selectedIndex],
           bottomNavigationBar: BottomNavigationBar(
             items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.home), label: 'Home'),
+                icon: Icon(Icons.history),
+                label: 'History',
+              ),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.history), label: 'History'),
+                icon: Icon(Icons.monetization_on),
+                label: 'Loans',
+              ),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.monetization_on), label: 'Loans'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.card_giftcard), label: 'Rewards'),
+                icon: Icon(Icons.card_giftcard),
+                label: 'Rewards',
+              ),
             ],
             currentIndex: _selectedIndex,
             selectedItemColor: Colors.deepPurple,

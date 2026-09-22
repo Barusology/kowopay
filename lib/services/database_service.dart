@@ -1,4 +1,5 @@
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 
 Map<String, dynamic> buildAtomicDebitTransaction({
   required Map<String, dynamic> currentUser,
@@ -46,7 +47,7 @@ class DatabaseService {
         'createdAt': ServerValue.timestamp,
       });
     } catch (e) {
-      print("Error saving user: $e");
+      debugPrint("Error saving user: $e");
       rethrow;
     }
   }
@@ -67,72 +68,6 @@ class DatabaseService {
     final snapshot = await _db.ref('users/$uid/balance').get();
     final value = snapshot.value;
     return value is num ? value.toDouble() : 0;
-  }
-
-  // Update Balance (e.g. after deposit)
-  Future<void> updateBalance(String uid, double newBalance) async {
-    await _db.ref('users/$uid/balance').set(newBalance);
-  }
-
-  // Deduct Balance
-  Future<bool> deductBalance(String uid, double amount) async {
-    final ref = _db.ref('users/$uid/balance');
-    final snapshot = await ref.get();
-    if (snapshot.exists) {
-      double currentBalance = (snapshot.value as num).toDouble();
-      if (currentBalance >= amount) {
-        await ref.set(currentBalance - amount);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  Future<bool> deductBalanceAndLog({
-    required String uid,
-    required double amount,
-    required String title,
-    required bool isCredit,
-  }) async {
-    final userRef = _db.ref('users/$uid');
-    final result = await userRef.runTransaction((currentData) {
-      final userData = currentData is Map
-          ? Map<String, dynamic>.from(currentData)
-          : <String, dynamic>{};
-      final transactionKey = userRef.child('transactions').push().key;
-      if (transactionKey == null) return Transaction.abort();
-      try {
-        return Transaction.success(
-          buildAtomicDebitTransaction(
-            currentUser: userData,
-            amount: amount,
-            title: title,
-            isCredit: isCredit,
-            transactionKey: transactionKey,
-          ),
-        );
-      } on StateError {
-        return Transaction.abort();
-      }
-    });
-    if (!result.committed) return false;
-    return true;
-  }
-
-  // Add Transaction
-  Future<void> addTransaction({
-    required String uid,
-    required String title,
-    required double amount,
-    required bool isCredit,
-  }) async {
-    await _db.ref('users/$uid/transactions').push().set({
-      'title': title,
-      'amount': amount,
-      'isCredit': isCredit,
-      'date': DateTime.now().toIso8601String(),
-      'timestamp': ServerValue.timestamp,
-    });
   }
 
   // Get Transactions Stream

@@ -22,12 +22,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer(
-      const Duration(seconds: _autoAdvanceSeconds),
-      () {
-        if (mounted) _completeOnboarding();
-      },
-    );
+    _timer = Timer(const Duration(seconds: _autoAdvanceSeconds), () {
+      if (mounted) _completeOnboarding();
+    });
   }
 
   @override
@@ -88,8 +85,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               // FIX: label now matches the actual timer duration.
               Text(
                 '(Auto-advances in $_autoAdvanceSeconds seconds)',
-                style:
-                    const TextStyle(fontSize: 12, color: Colors.grey),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 48),
               SizedBox(
@@ -101,10 +97,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text('Start Now',
-                      style: TextStyle(fontSize: 18)),
+                  child: const Text(
+                    'Start Now',
+                    style: TextStyle(fontSize: 18),
+                  ),
                 ),
               ),
             ],

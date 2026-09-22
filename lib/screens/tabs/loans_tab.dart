@@ -22,10 +22,7 @@ class LoansTab extends StatelessWidget {
             style: TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 30),
-          ElevatedButton(
-            onPressed: () {},
-            child: const Text('Join Waitlist'),
-          ),
+          ElevatedButton(onPressed: () {}, child: const Text('Join Waitlist')),
         ],
       ),
     );

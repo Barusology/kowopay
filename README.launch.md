@@ -60,10 +60,9 @@ flutter pub get
 flutter test --coverage
 ```
 
-CI enforces formatting, static analysis, secret scanning, and a minimum 35%
-line-coverage threshold. Flutterwave values for local test builds are supplied
-with `--dart-define` or copied from the placeholders in `.env.example`; the
-Gemini key must remain server-side.
+CI enforces formatting, static analysis, secret scanning, a debug Android build,
+Functions compilation, and a minimum 35% line-coverage threshold. Payment and
+Gemini secrets must remain in Functions Secret Manager.
 
 ### Run locally
 

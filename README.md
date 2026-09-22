@@ -122,9 +122,8 @@ cd kowopay
 flutter pub get
 ```
 
-Copy `.env.example` as a reference for local Flutterwave test values. The
-Flutter client does not accept a Gemini key; Gemini access must be provided by
-an authenticated server-side endpoint.
+Copy `.env.example` as a reference for Functions-only secrets. The Flutter
+client intentionally has no payment or Gemini credentials.
 
 ### Firebase Setup
 
@@ -154,8 +153,8 @@ flutter run -d <device-id>
 flutter test --coverage
 ```
 
-CI enforces formatting, static analysis, secret scanning, and at least 35%
-line coverage.
+CI enforces formatting, static analysis, secret scanning, debug Android builds,
+Functions compilation, and at least 35% line coverage.
 
 ## Build & Deployment
 
@@ -181,11 +180,10 @@ flutter build web
 
 This app integrates with external services and credentials. For production use, ensure that:
 
-- Flutterwave test credentials and redirect URL are supplied at build time,
-  never committed:
-  `flutter run --dart-define=FLUTTERWAVE_PUBLIC_KEY=... --dart-define=FLUTTERWAVE_REDIRECT_URL=...`
-- Gemini keys must not be supplied to the app. Financial advice is disabled
-  until an authenticated server-side endpoint proxies Gemini requests.
+- Flutterwave secret credentials and Gemini keys are stored only in Firebase
+  Functions Secret Manager.
+- Payment and financial-advice flows remain disabled in the client until their
+  authenticated server-side endpoints are deployed.
 - Firebase config is environment-specific
 - Payment provider credentials are not committed to source control
 - Environment-specific builds are isolated from development settings

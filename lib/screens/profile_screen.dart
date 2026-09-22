@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:typed_data';
@@ -67,8 +66,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile =
-        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
     if (pickedFile != null) {
       final bytes = await pickedFile.readAsBytes();
       if (mounted) {
@@ -101,7 +102,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         debugPrint('[Profile] Upload complete');
       }
 
-      await ref.read(databaseServiceProvider).updateProfile(
+      await ref
+          .read(databaseServiceProvider)
+          .updateProfile(
             uid: user.uid,
             name: _nameController.text.trim(),
             phone: _phoneController.text.trim(),
@@ -185,20 +188,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             backgroundImage: _imageBytes != null
                                 ? MemoryImage(_imageBytes!)
                                 : (_photoUrl != null
-                                    ? NetworkImage(_photoUrl!)
-                                        as ImageProvider
-                                    : null),
-                            child:
-                                (_imageBytes == null && _photoUrl == null)
-                                    ? const Icon(Icons.person, size: 50)
-                                    : null,
+                                      ? NetworkImage(_photoUrl!)
+                                            as ImageProvider
+                                      : null),
+                            child: (_imageBytes == null && _photoUrl == null)
+                                ? const Icon(Icons.person, size: 50)
+                                : null,
                           ),
                           if (_isEditing)
                             CircleAvatar(
                               radius: 14,
                               backgroundColor: Colors.deepPurple,
-                              child: const Icon(Icons.camera_alt,
-                                  size: 14, color: Colors.white),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                size: 14,
+                                color: Colors.white,
+                              ),
                             ),
                         ],
                       ),
@@ -209,7 +214,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         child: Text(
                           'Tap to change photo',
                           style: TextStyle(
-                              fontSize: 12, color: Colors.deepPurple),
+                            fontSize: 12,
+                            color: Colors.deepPurple,
+                          ),
                         ),
                       ),
                     const SizedBox(height: 20),
@@ -237,10 +244,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       enabled: _isEditing,
                       textInputAction: TextInputAction.next,
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty)
-                              ? 'Name is required'
-                              : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Name is required'
+                          : null,
                     ),
                     const SizedBox(height: 16),
 

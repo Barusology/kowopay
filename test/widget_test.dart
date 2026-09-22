@@ -21,10 +21,18 @@ void main() {
     expect(AIService(), isA<AIService>());
   });
 
-  test('PaymentService rejects incomplete configuration', () {
+  test('PaymentService fails closed without a backend', () {
     expect(
-      () => PaymentService(publicKey: '', redirectUrl: '', isTestMode: true),
-      throwsA(isA<StateError>()),
+      () => PaymentService().makePayment(
+        context: Object(),
+        email: 'user@example.com',
+        fullName: 'Test User',
+        phoneNumber: '08000000000',
+        amount: '100',
+        txRef: 'test-ref',
+        onResult: (_) {},
+      ),
+      throwsA(isA<UnsupportedError>()),
     );
   });
 }

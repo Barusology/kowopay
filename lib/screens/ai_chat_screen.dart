@@ -55,11 +55,13 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     } catch (_) {
       if (mounted) {
         setState(() {
-          _messages.add(const _ChatMessage(
-            role: 'ai',
-            text:
-                'Sorry, I couldn\'t process that right now. Please check your connection and try again.',
-          ));
+          _messages.add(
+            const _ChatMessage(
+              role: 'ai',
+              text:
+                  'Sorry, I couldn\'t process that right now. Please check your connection and try again.',
+            ),
+          );
         });
         _scrollToBottom();
       }
@@ -98,8 +100,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.chat_bubble_outline,
-                            size: 64, color: Colors.grey),
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
                         SizedBox(height: 16),
                         Text(
                           'Ask me anything about savings,\ninvestments, or budgeting.',
@@ -124,8 +129,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                           margin: const EdgeInsets.symmetric(vertical: 4),
                           padding: const EdgeInsets.all(12),
                           constraints: BoxConstraints(
-                            maxWidth:
-                                MediaQuery.of(context).size.width * 0.75,
+                            maxWidth: MediaQuery.of(context).size.width * 0.75,
                           ),
                           decoration: BoxDecoration(
                             color: isUser
@@ -145,8 +149,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                           child: Text(
                             msg.text,
                             style: TextStyle(
-                              color:
-                                  isUser ? Colors.white : Colors.black87,
+                              color: isUser ? Colors.white : Colors.black87,
                             ),
                           ),
                         ),
@@ -174,16 +177,22 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                       cursorColor: Colors.deepPurple,
                       maxLength: _maxInputLength,
                       // Hide the counter (maxLength is enforced silently).
-                      buildCounter: (_, {required currentLength,
-                              required isFocused,
-                              maxLength}) =>
-                          null,
+                      buildCounter:
+                          (
+                            _, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) => null,
                       decoration: InputDecoration(
                         hintText: 'Ask about savings, investments…',
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20)),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _sendMessage(),

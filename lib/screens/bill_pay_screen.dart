@@ -35,7 +35,8 @@ class BillPayScreen extends StatelessWidget {
           return Card(
             elevation: 2,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: () {
@@ -44,8 +45,7 @@ class BillPayScreen extends StatelessWidget {
                 // amount entry — replace this SnackBar when implemented.
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                        '${bill['name']} payment — coming soon'),
+                    content: Text('${bill['name']} payment — coming soon'),
                   ),
                 );
               },
@@ -61,7 +61,9 @@ class BillPayScreen extends StatelessWidget {
                   Text(
                     bill['name'] as String,
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                 ],
               ),

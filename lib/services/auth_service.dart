@@ -18,10 +18,14 @@ abstract class AuthRepository {
   User? get currentUser;
 
   Future<UserCredential> signInWithEmailAndPassword(
-      String email, String password);
+    String email,
+    String password,
+  );
 
   Future<UserCredential> registerWithEmailAndPassword(
-      String email, String password);
+    String email,
+    String password,
+  );
 
   Future<void> signOut();
 
@@ -40,7 +44,7 @@ abstract class AuthRepository {
 
 class FirebaseAuthService implements AuthRepository {
   FirebaseAuthService({FirebaseAuth? auth})
-      : _auth = auth ?? FirebaseAuth.instance;
+    : _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseAuth _auth;
 
@@ -52,7 +56,9 @@ class FirebaseAuthService implements AuthRepository {
 
   @override
   Future<UserCredential> signInWithEmailAndPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     // Intentionally do NOT trim the password — spaces may be intentional.
     return _auth.signInWithEmailAndPassword(
       email: email.trim(),
@@ -64,7 +70,9 @@ class FirebaseAuthService implements AuthRepository {
 
   @override
   Future<UserCredential> registerWithEmailAndPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     return _auth.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password, // never trim passwords
@@ -119,14 +127,19 @@ class FakeAuthService implements AuthRepository {
 
   @override
   Future<UserCredential> signInWithEmailAndPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     throw UnimplementedError(
-        'Stub signIn — override in tests that need sign-in behaviour.');
+      'Stub signIn — override in tests that need sign-in behaviour.',
+    );
   }
 
   @override
   Future<UserCredential> registerWithEmailAndPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     throw UnimplementedError('Stub register');
   }
 

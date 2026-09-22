@@ -111,7 +111,9 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
           if (isSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Deposit successful! Your wallet has been funded.'),
+                content: Text(
+                  'Deposit successful! Your wallet has been funded.',
+                ),
                 backgroundColor: Colors.green,
               ),
             );
@@ -156,8 +158,10 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
             if (_email.isNotEmpty)
               Card(
                 child: ListTile(
-                  leading: const Icon(Icons.account_circle,
-                      color: Colors.deepPurple),
+                  leading: const Icon(
+                    Icons.account_circle,
+                    color: Colors.deepPurple,
+                  ),
                   title: Text(_fullName.isNotEmpty ? _fullName : 'You'),
                   subtitle: Text(_email),
                 ),
@@ -172,8 +176,9 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
             TextField(
               key: const Key('amountField'),
               controller: _amountController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 prefixText: '₦ ',
@@ -189,17 +194,22 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
                 backgroundColor: Colors.deepPurple,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: _isLoading
                   ? const SizedBox(
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
-                  : const Text('Pay with Flutterwave',
-                      style: TextStyle(fontSize: 16)),
+                  : const Text(
+                      'Pay with Flutterwave',
+                      style: TextStyle(fontSize: 16),
+                    ),
             ),
           ],
         ),

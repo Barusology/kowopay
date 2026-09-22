@@ -29,11 +29,25 @@ class HelpSupportScreen extends StatelessWidget {
           const SizedBox(height: 10),
           const ExpansionTile(
             title: Text('How do I fund my wallet?'),
-            children: [Padding(padding: EdgeInsets.all(8.0), child: Text('Click on the "Deposit" button on the home screen and follow the prompts to pay via Card or Bank Transfer.'))],
+            children: [
+              Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Click on the "Deposit" button on the home screen and follow the prompts to pay via Card or Bank Transfer.',
+                ),
+              ),
+            ],
           ),
           const ExpansionTile(
             title: Text('How do I buy Airtime?'),
-            children: [Padding(padding: EdgeInsets.all(8.0), child: Text('Go to Services > Airtime, select your network, enter phone number and amount.'))],
+            children: [
+              Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text(
+                  'Go to Services > Airtime, select your network, enter phone number and amount.',
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           const Text(
@@ -49,7 +63,10 @@ class HelpSupportScreen extends StatelessWidget {
               try {
                 await _launchUrl('mailto:support@kowopay.com');
               } catch (e) {
-                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch email app')));
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Could not launch email app')),
+                );
               }
             },
           ),
@@ -58,10 +75,13 @@ class HelpSupportScreen extends StatelessWidget {
             title: const Text('Call Us'),
             subtitle: const Text('+234 800 KOWOPAY'),
             onTap: () async {
-               try {
+              try {
                 await _launchUrl('tel:+2348005696729');
               } catch (e) {
-                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch phone app')));
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Could not launch phone app')),
+                );
               }
             },
           ),

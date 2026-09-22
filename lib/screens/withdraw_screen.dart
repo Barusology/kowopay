@@ -52,9 +52,9 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
   Future<void> _withdraw() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedBank == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select your bank')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select your bank')));
       return;
     }
 
@@ -82,7 +82,8 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                  'Insufficient balance. Available: ₦${currentBalance.toStringAsFixed(2)}'),
+                'Insufficient balance. Available: ₦${currentBalance.toStringAsFixed(2)}',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -117,7 +118,8 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                  'Withdrawal failed. Please check your account details and try again.'),
+                'Withdrawal failed. Please check your account details and try again.',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -159,16 +161,12 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.account_balance),
                 ),
-                value: _selectedBank,
+                initialValue: _selectedBank,
                 items: _nigeriaBanks
-                    .map((b) => DropdownMenuItem(
-                          value: b,
-                          child: Text(b.name),
-                        ))
+                    .map((b) => DropdownMenuItem(value: b, child: Text(b.name)))
                     .toList(),
                 onChanged: (bank) => setState(() => _selectedBank = bank),
-                validator: (v) =>
-                    v == null ? 'Please select your bank' : null,
+                validator: (v) => v == null ? 'Please select your bank' : null,
               ),
               const SizedBox(height: 16),
 
@@ -200,8 +198,9 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
               TextFormField(
                 key: const Key('amountField'),
                 controller: _amountController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Amount',
                   prefixText: '₦ ',
@@ -231,17 +230,19 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
                   backgroundColor: Colors.deepPurple,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: _isLoading
                     ? const SizedBox(
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : const Text('Withdraw',
-                        style: TextStyle(fontSize: 16)),
+                    : const Text('Withdraw', style: TextStyle(fontSize: 16)),
               ),
             ],
           ),

@@ -38,7 +38,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     });
 
     try {
-      await ref.read(authServiceProvider).signInWithEmailAndPassword(
+      await ref
+          .read(authServiceProvider)
+          .signInWithEmailAndPassword(
             _emailController.text.trim(),
             // FIX: do NOT trim the password — trailing/leading spaces are valid
             // characters and trimming silently breaks accounts that use them.
@@ -110,7 +112,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       labelText: 'Email',
                       prefixIcon: const Icon(Icons.email_outlined),
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
@@ -141,10 +144,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               : Icons.visibility,
                         ),
                         onPressed: () => setState(
-                            () => _passwordVisible = !_passwordVisible),
+                          () => _passwordVisible = !_passwordVisible,
+                        ),
                       ),
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     obscureText: !_passwordVisible,
                     textInputAction: TextInputAction.done,
@@ -178,7 +183,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       backgroundColor: Colors.deepPurple,
                     ),
                     child: _isLoading
@@ -186,12 +192,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Text(
                             'Login',
-                            style:
-                                TextStyle(fontSize: 16, color: Colors.white),
+                            style: TextStyle(fontSize: 16, color: Colors.white),
                           ),
                   ),
                   const SizedBox(height: 16),
