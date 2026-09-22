@@ -1,5 +1,34 @@
 import 'package:firebase_database/firebase_database.dart';
 
+Map<String, dynamic> buildAtomicDebitTransaction({
+  required Map<String, dynamic> currentUser,
+  required double amount,
+  required String title,
+  required bool isCredit,
+  required String transactionKey,
+}) {
+  final currentBalance = currentUser['balance'] is num
+      ? (currentUser['balance'] as num).toDouble()
+      : 0.0;
+  if (currentBalance < amount) {
+    throw StateError('Insufficient balance');
+  }
+  final userData = Map<String, dynamic>.from(currentUser);
+  final transactions = userData['transactions'] is Map
+      ? Map<String, dynamic>.from(userData['transactions'])
+      : <String, dynamic>{};
+  transactions[transactionKey] = {
+    'title': title,
+    'amount': amount,
+    'isCredit': isCredit,
+    'date': DateTime.now().toIso8601String(),
+    'timestamp': ServerValue.timestamp,
+  };
+  userData['balance'] = currentBalance - amount;
+  userData['transactions'] = transactions;
+  return userData;
+}
+
 class DatabaseService {
   final FirebaseDatabase _db = FirebaseDatabase.instance;
 
@@ -70,25 +99,21 @@ class DatabaseService {
       final userData = currentData is Map
           ? Map<String, dynamic>.from(currentData)
           : <String, dynamic>{};
-      final currentBalance = userData['balance'] is num
-          ? (userData['balance'] as num).toDouble()
-          : 0.0;
-      if (currentBalance < amount) return Transaction.abort();
-      final transactions = userData['transactions'] is Map
-          ? Map<String, dynamic>.from(userData['transactions'])
-          : <String, dynamic>{};
       final transactionKey = userRef.child('transactions').push().key;
       if (transactionKey == null) return Transaction.abort();
-      transactions[transactionKey] = {
-        'title': title,
-        'amount': amount,
-        'isCredit': isCredit,
-        'date': DateTime.now().toIso8601String(),
-        'timestamp': ServerValue.timestamp,
-      };
-      userData['balance'] = currentBalance - amount;
-      userData['transactions'] = transactions;
-      return Transaction.success(userData);
+      try {
+        return Transaction.success(
+          buildAtomicDebitTransaction(
+            currentUser: userData,
+            amount: amount,
+            title: title,
+            isCredit: isCredit,
+            transactionKey: transactionKey,
+          ),
+        );
+      } on StateError {
+        return Transaction.abort();
+      }
     });
     if (!result.committed) return false;
     return true;
