@@ -122,6 +122,10 @@ cd kowopay
 flutter pub get
 ```
 
+Copy `.env.example` as a reference for local Flutterwave test values. The
+Flutter client does not accept a Gemini key; Gemini access must be provided by
+an authenticated server-side endpoint.
+
 ### Firebase Setup
 
 1. Create a Firebase project in the Firebase Console.
@@ -143,6 +147,15 @@ For a specific device:
 flutter devices
 flutter run -d <device-id>
 ```
+
+### Test and coverage
+
+```bash
+flutter test --coverage
+```
+
+CI enforces formatting, static analysis, secret scanning, and at least 35%
+line coverage.
 
 ## Build & Deployment
 
