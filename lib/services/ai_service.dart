@@ -5,7 +5,12 @@ class AIService {
   late final GenerativeModel _model;
 
   AIService({required this.apiKey}) {
-    print("Initializing AIService with model: gemini-1.5-flash");
+    if (apiKey.trim().isEmpty) {
+      throw StateError(
+        'GEMINI_API_KEY is not configured. '
+        'Provide it with --dart-define=GEMINI_API_KEY=...',
+      );
+    }
     _model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
   }
 
@@ -15,8 +20,7 @@ class AIService {
       final response = await _model.generateContent(content);
       return response.text ?? "I couldn't generate a response.";
     } catch (e) {
-      print("Gemini Error: $e");
-      return "Error: $e";
+      throw StateError('Unable to generate financial advice: $e');
     }
   }
 }

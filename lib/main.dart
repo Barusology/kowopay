@@ -20,7 +20,6 @@ import 'package:kowopay/screens/settings_screen.dart';
 import 'package:kowopay/screens/help_support_screen.dart';
 import 'package:kowopay/screens/insurance_screen.dart';
 import 'firebase_options.dart';
-import 'package:kowopay/providers/core_providers.dart';
 import 'package:device_preview/device_preview.dart';
 
 Future<void> main() async {
@@ -33,7 +32,7 @@ Future<void> main() async {
     // FIX: await MobileAds — prevents race condition where ads are requested
     // before the SDK has finished initialising.
     await MobileAds.instance.initialize();
-  } catch (e, stackTrace) {
+  } catch (e) {
     // FIX: debugPrint instead of print (stripped in release, no logcat leak).
     debugPrint('[KowoPay] Initialization failed: $e');
     // In production, report to crash analytics before rethrowing:

@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutterwave_standard/flutterwave.dart';
-import 'package:uuid/uuid.dart';
 
 class PaymentService {
   final String publicKey;
 
-  PaymentService({required this.publicKey});
+  PaymentService({required this.publicKey}) {
+    if (publicKey.trim().isEmpty) {
+      throw StateError(
+        'FLUTTERWAVE_PUBLIC_KEY is not configured. '
+        'Provide it with --dart-define=FLUTTERWAVE_PUBLIC_KEY=...',
+      );
+    }
+  }
 
   Future<void> makePayment({
     required BuildContext context,
@@ -14,7 +20,7 @@ class PaymentService {
     required String phoneNumber,
     required String amount,
     required String txRef,
-    required Function(String) onResult, 
+    required Function(String) onResult,
   }) async {
     final Customer customer = Customer(
       name: fullName,
@@ -39,18 +45,14 @@ class PaymentService {
       // Inspecting the package, charge returns dynamic or Future<ChargeResponse>
       // If the error persists, it might be that charge() doesn't need await or returns something else.
       // However, usually it is await flutterwave.charge().
-      
-      if (response != null) {
-        if (response.success == true) {
-          onResult("Transaction Successful! Ref: ${response.txRef}");
-        } else {
-           onResult("Transaction Failed!");
-        }
+
+      if (response.success == true) {
+        onResult("Transaction Successful! Ref: ${response.txRef}");
       } else {
-        onResult("Transaction Cancelled");
+        onResult("Transaction Failed!");
       }
     } catch (error) {
-       onResult("Error: $error");
+      onResult("Error: $error");
     }
   }
 
@@ -58,8 +60,11 @@ class PaymentService {
     required String bankCode,
     required String accountNumber,
     required double amount,
+    required String narration,
+    required String userId,
   }) async {
-    await Future.delayed(const Duration(seconds: 2));
-    return true; 
+    throw UnimplementedError(
+      'Bank withdrawals require a trusted server-side Flutterwave integration.',
+    );
   }
 }

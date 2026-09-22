@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:kowopay/providers/auth_provider.dart';
 import 'package:kowopay/providers/core_providers.dart';
-import 'package:kowopay/routes.dart';
 import 'package:kowopay/services/auth_service.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
@@ -62,7 +61,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         await user.updateDisplayName(_nameController.text.trim());
 
         // Persist full profile to the Realtime Database.
-        await ref.read(databaseServiceProvider).saveUser(
+        await ref
+            .read(databaseServiceProvider)
+            .saveUser(
               uid: user.uid,
               email: _emailController.text.trim(),
               name: _nameController.text.trim(),
@@ -125,7 +126,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     labelText: 'Full Name',
                     prefixIcon: const Icon(Icons.person_outline),
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   textInputAction: TextInputAction.next,
                   validator: (value) {
@@ -144,7 +146,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     labelText: 'Email',
                     prefixIcon: const Icon(Icons.email_outlined),
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
@@ -168,14 +171,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(_passwordVisible
-                          ? Icons.visibility_off
-                          : Icons.visibility),
+                      icon: Icon(
+                        _passwordVisible
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
                       onPressed: () =>
                           setState(() => _passwordVisible = !_passwordVisible),
                     ),
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   obscureText: !_passwordVisible,
                   textInputAction: TextInputAction.next,
@@ -205,14 +211,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     labelText: 'Confirm Password',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(_confirmVisible
-                          ? Icons.visibility_off
-                          : Icons.visibility),
+                      icon: Icon(
+                        _confirmVisible
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
                       onPressed: () =>
                           setState(() => _confirmVisible = !_confirmVisible),
                     ),
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   obscureText: !_confirmVisible,
                   textInputAction: TextInputAction.done,
@@ -244,7 +253,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     backgroundColor: Colors.deepPurple,
                   ),
                   child: _isLoading
@@ -252,12 +262,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                           width: 24,
                           height: 24,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Text(
                           'Register',
-                          style:
-                              TextStyle(fontSize: 16, color: Colors.white),
+                          style: TextStyle(fontSize: 16, color: Colors.white),
                         ),
                 ),
                 const SizedBox(height: 16),
