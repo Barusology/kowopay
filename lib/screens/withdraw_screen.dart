@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kowopay/providers/auth_provider.dart';
 import 'package:kowopay/providers/core_providers.dart';
+import 'package:kowopay/models/money.dart';
 
 // Sample bank list — in production fetch this from the Flutterwave banks API:
 // GET https://api.flutterwave.com/v3/banks/NG
@@ -52,14 +53,29 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
   Future<void> _withdraw() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedBank == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select your bank')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select your bank')));
       return;
     }
 
-    final amount = double.tryParse(_amountController.text.trim());
-    if (amount == null || amount <= 0) {
+    final Money amount;
+    try {
+      amount = Money.fromMajor(
+        currencyCode: 'NGN',
+        amount: _amountController.text.trim(),
+      );
+    } on FormatException {
+      _showInvalidAmount();
+      return;
+    } on RangeError {
+      _showInvalidAmount();
+      return;
+    } on ArgumentError {
+      _showInvalidAmount();
+      return;
+    }
+    if (amount.minorUnits <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid amount')),
       );
@@ -76,13 +92,14 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
 
       // FIX: check balance BEFORE initiating withdrawal.  Sending a withdrawal
       // request for more than the user has causes API errors and poor UX.
-      final currentBalance = await db.getBalance(user.uid);
-      if (amount > currentBalance) {
+      final currentBalance = await db.getBalance(user.uid, currencyCode: 'NGN');
+      if (amount.minorUnits > currentBalance.minorUnits) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                  'Insufficient balance. Available: ₦${currentBalance.toStringAsFixed(2)}'),
+                'Insufficient balance. Available: ${currentBalance.format(locale: 'en_NG')}',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -96,7 +113,7 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
       // withdrawToBank().  The commented-out call has been restored and
       // structured correctly.
       final paymentService = ref.read(paymentServiceProvider);
-      final success = await paymentService.withdrawToBank(
+      final receipt = await paymentService.withdrawToBank(
         accountNumber: _accountNumberController.text.trim(),
         bankCode: _selectedBank!.code,
         amount: amount,
@@ -105,23 +122,15 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
       );
 
       if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Withdrawal request submitted successfully!'),
-              backgroundColor: Colors.green,
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Withdrawal confirmed: ${receipt.amount.format(locale: 'en_NG')}',
             ),
-          );
-          Navigator.pop(context);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                  'Withdrawal failed. Please check your account details and try again.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -135,6 +144,12 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showInvalidAmount() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please enter a valid amount')),
+    );
   }
 
   @override
@@ -159,16 +174,12 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.account_balance),
                 ),
-                value: _selectedBank,
+                initialValue: _selectedBank,
                 items: _nigeriaBanks
-                    .map((b) => DropdownMenuItem(
-                          value: b,
-                          child: Text(b.name),
-                        ))
+                    .map((b) => DropdownMenuItem(value: b, child: Text(b.name)))
                     .toList(),
                 onChanged: (bank) => setState(() => _selectedBank = bank),
-                validator: (v) =>
-                    v == null ? 'Please select your bank' : null,
+                validator: (v) => v == null ? 'Please select your bank' : null,
               ),
               const SizedBox(height: 16),
 
@@ -200,8 +211,9 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
               TextFormField(
                 key: const Key('amountField'),
                 controller: _amountController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Amount',
                   prefixText: '₦ ',
@@ -212,11 +224,20 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
                   if (v == null || v.trim().isEmpty) {
                     return 'Please enter an amount';
                   }
-                  final parsed = double.tryParse(v.trim());
-                  if (parsed == null || parsed <= 0) {
+                  final Money parsed;
+                  try {
+                    parsed = Money.fromMajor(
+                      currencyCode: 'NGN',
+                      amount: v.trim(),
+                    );
+                  } on FormatException {
+                    return 'Please enter a valid amount';
+                  } on RangeError {
+                    return 'Please enter a valid amount';
+                  } on ArgumentError {
                     return 'Please enter a valid amount';
                   }
-                  if (parsed < 100) {
+                  if (parsed.minorUnits < 10000) {
                     return 'Minimum withdrawal amount is ₦100';
                   }
                   return null;
@@ -231,17 +252,19 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
                   backgroundColor: Colors.deepPurple,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: _isLoading
                     ? const SizedBox(
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : const Text('Withdraw',
-                        style: TextStyle(fontSize: 16)),
+                    : const Text('Withdraw', style: TextStyle(fontSize: 16)),
               ),
             ],
           ),

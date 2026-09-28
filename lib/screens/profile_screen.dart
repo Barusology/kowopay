@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import 'package:kowopay/providers/auth_provider.dart';
 import 'package:kowopay/providers/core_providers.dart';
+import 'package:kowopay/widgets/profile_image_content.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -19,7 +19,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _phoneController = TextEditingController();
 
   String _email = '';
-  String? _photoUrl;
+  String? _photoPath;
   bool _isEditing = false;
   bool _isLoading = false;
   Uint8List? _imageBytes;
@@ -55,7 +55,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _nameController.text = data['name'] as String? ?? '';
           _phoneController.text = data['phone'] as String? ?? '';
           _email = data['email'] as String? ?? user.email ?? '';
-          _photoUrl = data['photoUrl'] as String?;
+          _photoPath =
+              data['photoPath'] as String? ?? data['photoUrl'] as String?;
         });
       } else if (mounted) {
         setState(() => _email = user.email ?? '');
@@ -67,8 +68,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile =
-        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
     if (pickedFile != null) {
       final bytes = await pickedFile.readAsBytes();
       if (mounted) {
@@ -89,30 +92,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final user = ref.read(authServiceProvider).currentUser;
       if (user == null) return;
 
-      String? newPhotoUrl;
+      String? newPhotoPath;
 
       if (_imageBytes != null) {
         // FIX: debugPrint instead of print — print() is not stripped in release
         // builds and logs sensitive URLs to Android logcat (readable by other apps).
         debugPrint('[Profile] Starting image upload…');
-        newPhotoUrl = await ref
+        newPhotoPath = await ref
             .read(storageServiceProvider)
-            .uploadProfileImage(_imageBytes!, user.uid);
+            .uploadProfileImage(_imageBytes!);
         debugPrint('[Profile] Upload complete');
       }
 
-      await ref.read(databaseServiceProvider).updateProfile(
+      await ref
+          .read(databaseServiceProvider)
+          .updateProfile(
             uid: user.uid,
             name: _nameController.text.trim(),
             phone: _phoneController.text.trim(),
-            photoUrl: newPhotoUrl,
+            photoPath: newPhotoPath,
           );
 
       if (mounted) {
         setState(() {
           _isEditing = false;
           _imageBytes = null;
-          if (newPhotoUrl != null) _photoUrl = newPhotoUrl;
+          if (newPhotoPath != null) _photoPath = newPhotoPath;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -184,21 +189,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             backgroundColor: Colors.grey[200],
                             backgroundImage: _imageBytes != null
                                 ? MemoryImage(_imageBytes!)
-                                : (_photoUrl != null
-                                    ? NetworkImage(_photoUrl!)
-                                        as ImageProvider
-                                    : null),
-                            child:
-                                (_imageBytes == null && _photoUrl == null)
-                                    ? const Icon(Icons.person, size: 50)
-                                    : null,
+                                : null,
+                            child: _imageBytes == null
+                                ? ProfileImageContent(
+                                    path: _photoPath,
+                                    fallback: const Icon(
+                                      Icons.person,
+                                      size: 50,
+                                    ),
+                                  )
+                                : null,
                           ),
                           if (_isEditing)
                             CircleAvatar(
                               radius: 14,
                               backgroundColor: Colors.deepPurple,
-                              child: const Icon(Icons.camera_alt,
-                                  size: 14, color: Colors.white),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                size: 14,
+                                color: Colors.white,
+                              ),
                             ),
                         ],
                       ),
@@ -209,7 +219,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         child: Text(
                           'Tap to change photo',
                           style: TextStyle(
-                              fontSize: 12, color: Colors.deepPurple),
+                            fontSize: 12,
+                            color: Colors.deepPurple,
+                          ),
                         ),
                       ),
                     const SizedBox(height: 20),
@@ -237,10 +249,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       enabled: _isEditing,
                       textInputAction: TextInputAction.next,
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty)
-                              ? 'Name is required'
-                              : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Name is required'
+                          : null,
                     ),
                     const SizedBox(height: 16),
 

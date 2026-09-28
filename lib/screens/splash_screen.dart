@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:kowopay/routes.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -27,11 +25,7 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              'lib/assets/kowopay.jpg',
-              width: 200,
-              height: 200,
-            ),
+            Image.asset('lib/assets/kowopay.jpg', width: 200, height: 200),
             const SizedBox(height: 20),
             const CircularProgressIndicator(color: Colors.deepPurple),
             const SizedBox(height: 20),

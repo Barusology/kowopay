@@ -1,65 +1,46 @@
-import 'package:flutter/material.dart';
-import 'package:flutterwave_standard/flutterwave.dart';
-import 'package:uuid/uuid.dart';
+import '../models/money.dart';
+
+class PaymentReceipt {
+  const PaymentReceipt({required this.providerReference, required this.amount});
+
+  final String providerReference;
+  final Money amount;
+}
 
 class PaymentService {
-  final String publicKey;
+  PaymentService();
 
-  PaymentService({required this.publicKey});
+  Future<PaymentReceipt> purchaseAirtime({
+    required String phoneNumber,
+    required Money amount,
+    required String carrier,
+  }) async {
+    throw UnsupportedError(
+      'Airtime purchases require the authenticated server-side payment flow.',
+    );
+  }
 
-  Future<void> makePayment({
-    required BuildContext context,
+  Future<PaymentReceipt> makePayment({
     required String email,
     required String fullName,
     required String phoneNumber,
-    required String amount,
+    required Money amount,
     required String txRef,
-    required Function(String) onResult, 
   }) async {
-    final Customer customer = Customer(
-      name: fullName,
-      phoneNumber: phoneNumber,
-      email: email,
+    throw UnsupportedError(
+      'Payments require the authenticated server-side Flutterwave flow.',
     );
-
-    final Flutterwave flutterwave = Flutterwave(
-      publicKey: publicKey,
-      currency: "NGN",
-      redirectUrl: "https://google.com",
-      txRef: txRef,
-      amount: amount,
-      customer: customer,
-      paymentOptions: "card, payattitude, barter, bank transfer, ussd",
-      customization: Customization(title: "KowoPay Deposit"),
-      isTestMode: true,
-    );
-
-    try {
-      final ChargeResponse response = await flutterwave.charge(context);
-      // Inspecting the package, charge returns dynamic or Future<ChargeResponse>
-      // If the error persists, it might be that charge() doesn't need await or returns something else.
-      // However, usually it is await flutterwave.charge().
-      
-      if (response != null) {
-        if (response.success == true) {
-          onResult("Transaction Successful! Ref: ${response.txRef}");
-        } else {
-           onResult("Transaction Failed!");
-        }
-      } else {
-        onResult("Transaction Cancelled");
-      }
-    } catch (error) {
-       onResult("Error: $error");
-    }
   }
 
-  Future<bool> withdrawToBank({
+  Future<PaymentReceipt> withdrawToBank({
     required String bankCode,
     required String accountNumber,
-    required double amount,
+    required Money amount,
+    required String narration,
+    required String userId,
   }) async {
-    await Future.delayed(const Duration(seconds: 2));
-    return true; 
+    throw UnimplementedError(
+      'Bank withdrawals require a trusted server-side Flutterwave integration.',
+    );
   }
 }

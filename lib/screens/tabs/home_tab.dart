@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kowopay/providers/auth_provider.dart';
 import 'package:kowopay/providers/core_providers.dart';
+import 'package:kowopay/models/money.dart';
 import 'package:kowopay/routes.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -26,23 +27,23 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
   void _loadAd() {
     if (kIsWeb) return; // Skip on web for now
-    
+
     // We can't access ref directly in initState comfortably without a delay or creating it in didChangeDependencies
     // But since AdService is a Provider, we can just instantiate it or use reading in next frame.
     // However, strictly speaking, we can just create the ad here.
   }
-  
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_bannerAd == null && !kIsWeb) {
-       final adService = ref.read(adServiceProvider);
-       _bannerAd = adService.createBannerAd();
-       _bannerAd!.load().then((_) {
-         setState(() {
-           _isAdLoaded = true;
-         });
-       });
+      final adService = ref.read(adServiceProvider);
+      _bannerAd = adService.createBannerAd();
+      _bannerAd!.load().then((_) {
+        setState(() {
+          _isAdLoaded = true;
+        });
+      });
     }
   }
 
@@ -64,15 +65,36 @@ class _HomeTabState extends ConsumerState<HomeTab> {
         children: [
           // User Greeting & Balance Card
           StreamBuilder(
-            stream: user != null ? databaseService.getUserStream(user.uid) : const Stream.empty(),
+            stream: user != null
+                ? databaseService.getUserStream(user.uid)
+                : const Stream.empty(),
             builder: (context, snapshot) {
               String name = 'User';
               String balance = '0.00';
-              
+
               if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
-                  final data = snapshot.data!.snapshot.value as Map;
-                  name = data['name'] ?? 'User';
-                  balance = (data['balance'] ?? 0).toString();
+                final data = snapshot.data!.snapshot.value as Map;
+                final profile = data['profile'];
+                name = profile is Map
+                    ? profile['name'] as String? ?? 'User'
+                    : data['name'] as String? ?? 'User';
+                final rawBalance = data['balance'];
+                if (rawBalance is num) {
+                  balance = Money.fromMajor(
+                    currencyCode: 'NGN',
+                    amount: rawBalance.toString(),
+                  ).format(locale: 'en_NG');
+                }
+                final wallets = data['wallets'];
+                if (wallets is Map) {
+                  final ngnWallet = wallets['NGN'];
+                  if (ngnWallet is Map && ngnWallet['balanceMinor'] is int) {
+                    balance = Money.fromMinorUnits(
+                      currencyCode: 'NGN',
+                      minorUnits: ngnWallet['balanceMinor'] as int,
+                    ).format(locale: 'en_NG');
+                  }
+                }
               }
 
               return Container(
@@ -86,7 +108,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.deepPurple.withOpacity(0.3),
+                      color: Colors.deepPurple.withValues(alpha: 0.3),
                       blurRadius: 10,
                       offset: const Offset(0, 5),
                     ),
@@ -97,11 +119,14 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   children: [
                     Text(
                       'Hello, $name',
-                      style: const TextStyle(color: Colors.white70, fontSize: 16),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      '₦ $balance', 
+                      balance,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 32,
@@ -119,19 +144,25 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                             Navigator.pushNamed(context, AppRoutes.deposit);
                           },
                         ),
-                          _ActionButton(
+                        _ActionButton(
                           icon: Icons.arrow_upward,
                           label: 'Withdraw',
                           onTap: () {
-                              Navigator.pushNamed(context, AppRoutes.withdraw);
+                            Navigator.pushNamed(context, AppRoutes.withdraw);
                           },
                         ),
-                          _ActionButton(
+                        _ActionButton(
                           icon: Icons.history,
                           label: 'History',
                           onTap: () {
                             // This will now likely navigate to the History Tab effectively
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Use the bottom nav to view history')));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Use the bottom nav to view history',
+                                ),
+                              ),
+                            );
                           },
                         ),
                       ],
@@ -139,10 +170,10 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   ],
                 ),
               );
-            }
+            },
           ),
           const SizedBox(height: 20),
-          
+
           // Services Grid
           const Text(
             'Services',
@@ -161,7 +192,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 label: 'AI Assistant',
                 color: Colors.purple,
                 onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.aiChat);
+                  Navigator.pushNamed(context, AppRoutes.aiChat);
                 },
               ),
               _ServiceCard(
@@ -169,23 +200,23 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 label: 'Bills Payment',
                 color: Colors.orange,
                 onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.billPay);
+                  Navigator.pushNamed(context, AppRoutes.billPay);
                 },
               ),
-                _ServiceCard(
+              _ServiceCard(
                 icon: Icons.phone_android,
                 label: 'Airtime',
                 color: Colors.green,
                 onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.airtime);
+                  Navigator.pushNamed(context, AppRoutes.airtime);
                 },
               ),
-                  _ServiceCard(
+              _ServiceCard(
                 icon: Icons.security,
                 label: 'Insurance',
                 color: Colors.teal,
                 onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.insurance);
+                  Navigator.pushNamed(context, AppRoutes.insurance);
                 },
               ),
             ],
@@ -208,7 +239,11 @@ class _ActionButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _ActionButton({required this.icon, required this.label, required this.onTap});
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -219,7 +254,7 @@ class _ActionButton extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: Colors.white, size: 24),
@@ -254,8 +289,8 @@ class _ServiceCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
-              BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+            BoxShadow(
+              color: Colors.grey.withValues(alpha: 0.1),
               blurRadius: 5,
               offset: const Offset(0, 2),
             ),
@@ -267,7 +302,7 @@ class _ServiceCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 30),

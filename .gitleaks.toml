@@ -1,0 +1,7 @@
+[allowlist]
+description = "Firebase client identifiers are public by design; server secrets are not."
+paths = [
+  '''(^|/|\\)lib/firebase_options\.dart$''',
+  '''(^|/|\\)android/app/google-services.*\.json$''',
+  '''(^|/|\\)ios/Runner/GoogleService-Info\.plist$''',
+]

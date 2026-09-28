@@ -75,8 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text('Password reset email sent to $email'),
+            content: Text('Password reset email sent to $email'),
             backgroundColor: Colors.green,
           ),
         );
@@ -85,8 +84,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content:
-                Text('Failed to send reset email. Please try again.'),
+            content: Text('Failed to send reset email. Please try again.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -98,9 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     // Show a loader while SharedPreferences are being read.
     if (_notificationsEnabled == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -116,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Enable Notifications'),
             subtitle: const Text('Receive alerts for transactions'),
             value: _notificationsEnabled!,
-            activeColor: Colors.deepPurple,
+            activeThumbColor: Colors.deepPurple,
             onChanged: _saveNotifications,
           ),
 
@@ -124,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Biometric Login'),
             subtitle: const Text('Use fingerprint or face ID to log in'),
             value: _biometricsEnabled!,
-            activeColor: Colors.deepPurple,
+            activeThumbColor: Colors.deepPurple,
             onChanged: _saveBiometrics,
           ),
 
@@ -155,8 +151,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
 
           ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined,
-                color: Colors.deepPurple),
+            leading: const Icon(
+              Icons.privacy_tip_outlined,
+              color: Colors.deepPurple,
+            ),
             title: const Text('Privacy Policy'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {

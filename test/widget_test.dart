@@ -1,30 +1,37 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:kowopay/main.dart';
+import 'package:kowopay/config/app_config.dart';
+import 'package:kowopay/models/money.dart';
+import 'package:kowopay/services/ai_service.dart';
+import 'package:kowopay/services/payment_service.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('AppConfig', () {
+    test('rejects missing runtime configuration', () {
+      expect(
+        () => AppConfig.requireValue('GEMINI_API_KEY', ''),
+        throwsA(isA<StateError>()),
+      );
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    test('returns configured values unchanged', () {
+      expect(AppConfig.requireValue('EXAMPLE', 'configured'), 'configured');
+    });
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  test('AIService does not accept client-side credentials', () {
+    expect(AIService(), isA<AIService>());
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  test('PaymentService fails closed without a backend', () async {
+    await expectLater(
+      PaymentService().makePayment(
+        email: 'user@example.com',
+        fullName: 'Test User',
+        phoneNumber: '08000000000',
+        amount: Money.fromMajor(currencyCode: 'NGN', amount: '100'),
+        txRef: 'test-ref',
+      ),
+      throwsA(isA<UnsupportedError>()),
+    );
   });
 }

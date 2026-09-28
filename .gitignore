@@ -32,6 +32,9 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/coverage/
+/functions/node_modules/
+/functions/lib/
 
 # Symbolication related
 app.*.symbols
@@ -48,3 +51,6 @@ app.*.map.json
 /kowopay/
 /kowopay_fixed/
 .vscode/
+.env
+.env.*
+!.env.example

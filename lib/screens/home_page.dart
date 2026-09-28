@@ -7,6 +7,7 @@ import 'package:kowopay/screens/tabs/history_tab.dart';
 import 'package:kowopay/screens/tabs/loans_tab.dart';
 import 'package:kowopay/screens/tabs/rewards_tab.dart';
 import 'package:kowopay/screens/components/app_drawer.dart';
+import 'package:kowopay/widgets/profile_image_content.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -63,7 +64,15 @@ class _HomePageState extends ConsumerState<HomePage> {
           final raw = snapshot.data!.snapshot.value;
           if (raw is Map) {
             final data = Map<String, dynamic>.from(raw);
-            photoUrl = data['photoUrl'] as String?;
+            final profile = data['profile'];
+            if (profile is Map) {
+              photoUrl =
+                  profile['photoPath'] as String? ??
+                  profile['photoUrl'] as String?;
+            } else {
+              photoUrl =
+                  data['photoPath'] as String? ?? data['photoUrl'] as String?;
+            }
           }
         }
 
@@ -91,13 +100,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                   backgroundImage: photoUrl != null
                       ? NetworkImage(photoUrl)
                       : null,
-                  child: photoUrl == null
-                      ? Text(
-                          email.isNotEmpty ? email[0].toUpperCase() : 'U',
-                          style:
-                              const TextStyle(color: Colors.deepPurple),
-                        )
-                      : null,
+                  child: ProfileImageContent(
+                    path: photoUrl,
+                    fallback: Text(
+                      email.isNotEmpty ? email[0].toUpperCase() : 'U',
+                      style: const TextStyle(color: Colors.deepPurple),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -106,14 +115,19 @@ class _HomePageState extends ConsumerState<HomePage> {
           body: _pages[_selectedIndex],
           bottomNavigationBar: BottomNavigationBar(
             items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.home), label: 'Home'),
+                icon: Icon(Icons.history),
+                label: 'History',
+              ),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.history), label: 'History'),
+                icon: Icon(Icons.monetization_on),
+                label: 'Loans',
+              ),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.monetization_on), label: 'Loans'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.card_giftcard), label: 'Rewards'),
+                icon: Icon(Icons.card_giftcard),
+                label: 'Rewards',
+              ),
             ],
             currentIndex: _selectedIndex,
             selectedItemColor: Colors.deepPurple,

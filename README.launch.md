@@ -54,6 +54,16 @@ cd kowopay
 flutter pub get
 ```
 
+### Test
+
+```bash
+flutter test --coverage
+```
+
+CI enforces formatting, static analysis, secret scanning, a debug Android build,
+Functions compilation, and a minimum 35% line-coverage threshold. Payment and
+Gemini secrets must remain in Functions Secret Manager.
+
 ### Run locally
 
 ```bash

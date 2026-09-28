@@ -44,10 +44,10 @@ final authServiceProvider = Provider<AuthRepository>((ref) {
 /// transient network failure) to null, which the app treats as "signed out"
 /// and redirects to LoginPage — the only safe fallback in a financial app.
 final authStateProvider = StreamProvider<User?>((ref) {
-  return ref
-      .read(authServiceProvider)
-      .authStateChanges
-      .handleError((Object error, StackTrace stack) {
+  return ref.read(authServiceProvider).authStateChanges.handleError((
+    Object error,
+    StackTrace stack,
+  ) {
     debugPrint('[AuthState] Stream error — treating as signed out: $error');
     // In production, report before silently failing:
     // if (!kDebugMode) FirebaseCrashlytics.instance.recordError(error, stack);
