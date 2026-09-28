@@ -7,10 +7,31 @@
         ".read": "auth != null && auth.uid == $uid",
         "profile": {
           ".write": "auth != null && auth.uid == $uid",
-          ".validate": "newData.hasChildren(['name', 'phone'])"
+          ".validate": "newData.hasChildren(['name']) && newData.numChildren() <= 4 && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 100 && (!newData.child('phone').exists() || (newData.child('phone').isString() && newData.child('phone').val().length <= 20)) && (!newData.child('photoPath').exists() || (newData.child('photoPath').isString() && newData.child('photoPath').val() == 'profile_images/' + auth.uid + '.jpg')) && (!newData.child('photoUrl').exists() || (newData.child('photoUrl').isString() && newData.child('photoUrl').val().beginsWith('https://') && newData.child('photoUrl').val().length <= 2048))",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+          },
+          "phone": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "photoUrl": {
+            ".validate": "newData.isString() && newData.val().beginsWith('https://') && newData.val().length <= 2048"
+          },
+          "photoPath": {
+            ".validate": "newData.isString() && newData.val() == 'profile_images/' + auth.uid + '.jpg'"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
         "balance": {
           ".write": false
+        },
+        "wallets": {
+          "$currencyCode": {
+            ".read": "auth != null && auth.uid == $uid",
+            ".write": false
+          }
         },
         "transactions": {
           ".write": false

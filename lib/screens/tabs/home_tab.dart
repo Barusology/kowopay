@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kowopay/providers/auth_provider.dart';
 import 'package:kowopay/providers/core_providers.dart';
+import 'package:kowopay/models/money.dart';
 import 'package:kowopay/routes.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -73,8 +74,27 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
               if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
                 final data = snapshot.data!.snapshot.value as Map;
-                name = data['name'] ?? 'User';
-                balance = (data['balance'] ?? 0).toString();
+                final profile = data['profile'];
+                name = profile is Map
+                    ? profile['name'] as String? ?? 'User'
+                    : data['name'] as String? ?? 'User';
+                final rawBalance = data['balance'];
+                if (rawBalance is num) {
+                  balance = Money.fromMajor(
+                    currencyCode: 'NGN',
+                    amount: rawBalance.toString(),
+                  ).format(locale: 'en_NG');
+                }
+                final wallets = data['wallets'];
+                if (wallets is Map) {
+                  final ngnWallet = wallets['NGN'];
+                  if (ngnWallet is Map && ngnWallet['balanceMinor'] is int) {
+                    balance = Money.fromMinorUnits(
+                      currencyCode: 'NGN',
+                      minorUnits: ngnWallet['balanceMinor'] as int,
+                    ).format(locale: 'en_NG');
+                  }
+                }
               }
 
               return Container(
@@ -106,7 +126,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      '₦ $balance',
+                      balance,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 32,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kowopay/providers/auth_provider.dart';
 import 'package:kowopay/providers/core_providers.dart';
+import 'package:kowopay/widgets/profile_image_content.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:kowopay/routes.dart';
 
@@ -24,9 +25,18 @@ class AppDrawer extends ConsumerWidget {
         builder: (context, snapshot) {
           String? photoUrl;
           if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
-            final data = snapshot.data!.snapshot.value as Map;
-            name = data['name'] ?? name;
-            if (data.containsKey('photoUrl')) photoUrl = data['photoUrl'];
+            final raw = snapshot.data!.snapshot.value;
+            if (raw is Map) {
+              final data = Map<String, dynamic>.from(raw);
+              final profile = data['profile'];
+              final profileData = profile is Map
+                  ? Map<String, dynamic>.from(profile)
+                  : data;
+              name = profileData['name'] as String? ?? name;
+              photoUrl =
+                  profileData['photoPath'] as String? ??
+                  profileData['photoUrl'] as String?;
+            }
           }
 
           return ListView(
@@ -37,18 +47,16 @@ class AppDrawer extends ConsumerWidget {
                 accountEmail: Text(email),
                 currentAccountPicture: CircleAvatar(
                   backgroundColor: Colors.white,
-                  backgroundImage: photoUrl != null
-                      ? NetworkImage(photoUrl)
-                      : null,
-                  child: photoUrl == null
-                      ? Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                          style: const TextStyle(
-                            fontSize: 40.0,
-                            color: Colors.deepPurple,
-                          ),
-                        )
-                      : null,
+                  child: ProfileImageContent(
+                    path: photoUrl,
+                    fallback: Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                      style: const TextStyle(
+                        fontSize: 40.0,
+                        color: Colors.deepPurple,
+                      ),
+                    ),
+                  ),
                 ),
                 decoration: const BoxDecoration(color: Colors.deepPurple),
               ),

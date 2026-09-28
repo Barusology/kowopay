@@ -63,11 +63,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         // Persist full profile to the Realtime Database.
         await ref
             .read(databaseServiceProvider)
-            .saveUser(
-              uid: user.uid,
-              email: _emailController.text.trim(),
-              name: _nameController.text.trim(),
-            );
+            .saveUser(uid: user.uid, name: _nameController.text.trim());
       }
 
       // FIX: navigation removed.  authStateProvider in main.dart rebuilds the

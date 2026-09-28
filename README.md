@@ -4,13 +4,13 @@
 
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter)
 ![Firebase](https://img.shields.io/badge/Firebase-Auth%20%2B%20DB-FFCA28?style=for-the-badge&logo=firebase)
-![Dart](https://img.shields.io/badge/Dart-2.x-0175C2?style=for-the-badge&logo=dart)
+![Dart](https://img.shields.io/badge/Dart-3.8%2B-0175C2?style=for-the-badge&logo=dart)
 ![Flutterwave](https://img.shields.io/badge/Payments-Flutterwave-0B4F6C?style=for-the-badge)
 ![AI](https://img.shields.io/badge/AI-Gemini%20Assistant-8A2BE2?style=for-the-badge)
 
 </div>
 
-KowoPay is a modern fintech mobile experience designed to make digital finance feel simpler, faster, and more trustworthy. Built with Flutter and powered by Firebase, the app brings together wallet management, bill payments, airtime purchases, deposits, withdrawals, and customer support in one clean mobile interface.
+KowoPay is a Flutter/Firebase fintech prototype for exploring onboarding, wallet, and everyday-payment experiences. Payment, withdrawal, airtime, and AI features remain fail-closed until their authenticated, provider-verified production services are deployed. Do not use this prototype to hold or move customer funds.
 
 <div align="center">
 
@@ -41,13 +41,12 @@ KowoPay is built for users who want a secure and intuitive mobile finance experi
 
 - Secure onboarding and login flow
 - User wallet and account overview dashboard
-- Deposit and withdrawal flows
-- Airtime top-up and bill payments
-- AI-powered support assistant
+- Deposit, withdrawal, airtime, and bill-payment UI (transactions disabled until trusted backend settlement is available)
+- AI support UI (server-side model proxy and abuse controls still required)
 - Profile, settings, and help screens
 - Insurance and financial service awareness screens
 - Firebase-backed authentication and data handling
-- Flutterwave-ready payment integration
+- Firebase Functions payment boundary scaffold; no live payment-provider settlement
 - Mobile-first UI for Android and iOS
 
 ## Screens Included
@@ -67,7 +66,7 @@ KowoPay is built for users who want a secure and intuitive mobile finance experi
 ## Tech Stack
 
 - Flutter
-- Dart
+- Dart 3.8+
 - Firebase Auth
 - Firebase Realtime Database
 - Firebase Storage
@@ -89,6 +88,7 @@ KowoPay is built for users who want a secure and intuitive mobile finance experi
 │   ├── providers/           # State management providers
 │   ├── screens/             # UI flows and screens
 │   ├── services/            # Firebase and business logic services
+│   ├── models/money.dart    # ISO 4217 currency and integer minor-unit model
 │   ├── main.dart            # App entry point
 │   ├── routes.dart          # Route configuration
 │   └── ...
@@ -184,6 +184,21 @@ This app integrates with external services and credentials. For production use, 
   Functions Secret Manager.
 - Payment and financial-advice flows remain disabled in the client until their
   authenticated server-side endpoints are deployed.
+- All financial APIs and ledger entries use an ISO 4217 `currencyCode` plus
+  integer `amountMinor`/`balanceMinor`; never use floating point for money
+  arithmetic or infer a currency from a formatted display string.
+- Currency representation supports ISO 4217 codes with the corresponding
+  minor-unit precision. Payment-provider support and the current product UI
+  remain narrower; currency representation alone does not enable a currency
+  for settlement.
+- Existing `/users/{uid}/balance` floating-point data is legacy read-only
+  compatibility. Reconcile and migrate it to `/users/{uid}/wallets/{CODE}/balanceMinor`
+  with an audited, idempotent migration before enabling any funded production
+  wallet endpoint. Do not deploy a migration against production balances
+  without a reviewed backup and reconciliation plan.
+- Deploy and emulator-test both `database.rules.json` and `storage.rules`.
+- The generic wallet debit callable requires Firebase App Check and is not a
+  substitute for a verified provider payment, fulfilment, or settlement flow.
 - Firebase config is environment-specific
 - Payment provider credentials are not committed to source control
 - Environment-specific builds are isolated from development settings

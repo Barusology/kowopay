@@ -31,17 +31,7 @@ jobs:
         run: flutter pub get
 
       - name: Verify formatting
-        run: >-
-          dart format --output=none --set-exit-if-changed
-          lib/config/app_config.dart
-          lib/main.dart
-          lib/providers/core_providers.dart
-          lib/screens/register_page.dart
-          lib/screens/splash_screen.dart
-          lib/services/ai_service.dart
-          lib/services/database_service.dart
-          lib/services/payment_service.dart
-          test/widget_test.dart
+        run: dart format --output=none --set-exit-if-changed .
 
       - name: Analyze project source
         run: flutter analyze --fatal-warnings --fatal-infos
@@ -73,3 +63,4 @@ jobs:
           cache-dependency-path: functions/package-lock.json
       - run: npm ci
       - run: npm test
+      - run: npm audit --audit-level=high

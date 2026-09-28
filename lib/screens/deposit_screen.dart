@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kowopay/providers/auth_provider.dart';
 import 'package:kowopay/providers/core_providers.dart';
+import 'package:kowopay/models/money.dart';
 import 'package:uuid/uuid.dart';
 
 class DepositScreen extends ConsumerStatefulWidget {
@@ -64,9 +65,20 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
   Future<void> _initiatePayment() async {
     final rawAmount = _amountController.text.trim();
 
-    // FIX: validate amount is a positive number above the minimum.
-    final parsedAmount = double.tryParse(rawAmount);
-    if (parsedAmount == null || parsedAmount < 100) {
+    final Money amount;
+    try {
+      amount = Money.fromMajor(currencyCode: 'NGN', amount: rawAmount);
+    } on FormatException {
+      _showInvalidAmount();
+      return;
+    } on RangeError {
+      _showInvalidAmount();
+      return;
+    } on ArgumentError {
+      _showInvalidAmount();
+      return;
+    }
+    if (amount.minorUnits < 10000) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter a valid amount (minimum ₦100)'),
@@ -91,43 +103,24 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
     try {
       final paymentService = ref.read(paymentServiceProvider);
 
-      await paymentService.makePayment(
-        context: context,
+      final receipt = await paymentService.makePayment(
         email: _email,
         fullName: _fullName.isNotEmpty ? _fullName : 'KowoPay User',
         phoneNumber: _phone.isNotEmpty ? _phone : '',
-        amount: rawAmount,
+        amount: amount,
         txRef: const Uuid().v4(),
-        onResult: (result) {
-          setState(() => _isLoading = false);
-
-          // FIX: check the result status object/field, not a fragile
-          // .contains("Successful") string match.  Any rewording of the
-          // Flutterwave callback message would silently break the success path.
-          final isSuccess =
-              result.toString().toLowerCase().contains('successful') ||
-              result.toString().toLowerCase() == 'completed';
-
-          if (isSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Deposit successful! Your wallet has been funded.',
-                ),
-                backgroundColor: Colors.green,
-              ),
-            );
-            if (mounted) Navigator.pop(context);
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Payment not completed: $result'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-        },
       );
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Deposit confirmed: ${receipt.amount.format(locale: 'en_NG')}',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context);
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -139,6 +132,15 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
         );
       }
     }
+  }
+
+  void _showInvalidAmount() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please enter a valid amount (minimum ₦100)'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   @override

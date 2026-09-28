@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kowopay/config/app_config.dart';
+import 'package:kowopay/models/money.dart';
 import 'package:kowopay/services/ai_service.dart';
 import 'package:kowopay/services/payment_service.dart';
 
@@ -21,16 +22,14 @@ void main() {
     expect(AIService(), isA<AIService>());
   });
 
-  test('PaymentService fails closed without a backend', () {
-    expect(
-      () => PaymentService().makePayment(
-        context: Object(),
+  test('PaymentService fails closed without a backend', () async {
+    await expectLater(
+      PaymentService().makePayment(
         email: 'user@example.com',
         fullName: 'Test User',
         phoneNumber: '08000000000',
-        amount: '100',
+        amount: Money.fromMajor(currencyCode: 'NGN', amount: '100'),
         txRef: 'test-ref',
-        onResult: (_) {},
       ),
       throwsA(isA<UnsupportedError>()),
     );

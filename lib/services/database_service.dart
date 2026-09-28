@@ -1,51 +1,14 @@
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
-
-Map<String, dynamic> buildAtomicDebitTransaction({
-  required Map<String, dynamic> currentUser,
-  required double amount,
-  required String title,
-  required bool isCredit,
-  required String transactionKey,
-}) {
-  final currentBalance = currentUser['balance'] is num
-      ? (currentUser['balance'] as num).toDouble()
-      : 0.0;
-  if (currentBalance < amount) {
-    throw StateError('Insufficient balance');
-  }
-  final userData = Map<String, dynamic>.from(currentUser);
-  final transactions = userData['transactions'] is Map
-      ? Map<String, dynamic>.from(userData['transactions'])
-      : <String, dynamic>{};
-  transactions[transactionKey] = {
-    'title': title,
-    'amount': amount,
-    'isCredit': isCredit,
-    'date': DateTime.now().toIso8601String(),
-    'timestamp': ServerValue.timestamp,
-  };
-  userData['balance'] = currentBalance - amount;
-  userData['transactions'] = transactions;
-  return userData;
-}
+import '../models/money.dart';
 
 class DatabaseService {
   final FirebaseDatabase _db = FirebaseDatabase.instance;
 
   // Create or Update User Profile
-  Future<void> saveUser({
-    required String uid,
-    required String email,
-    required String name,
-  }) async {
+  Future<void> saveUser({required String uid, required String name}) async {
     try {
-      await _db.ref('users/$uid').set({
-        'name': name,
-        'email': email,
-        'balance': 0.0, // Initial balance
-        'createdAt': ServerValue.timestamp,
-      });
+      await _db.ref('users/$uid/profile').set({'name': name});
     } catch (e) {
       debugPrint("Error saving user: $e");
       rethrow;
@@ -58,16 +21,44 @@ class DatabaseService {
   }
 
   Future<Map<String, dynamic>?> getUserOnce(String uid) async {
-    final snapshot = await _db.ref('users/$uid').get();
-    final value = snapshot.value;
+    final profileSnapshot = await _db.ref('users/$uid/profile').get();
+    final profileValue = profileSnapshot.value;
+    if (profileValue is Map) return Map<String, dynamic>.from(profileValue);
+
+    final legacySnapshot = await _db.ref('users/$uid').get();
+    final value = legacySnapshot.value;
     if (value is! Map) return null;
     return Map<String, dynamic>.from(value);
   }
 
-  Future<double> getBalance(String uid) async {
-    final snapshot = await _db.ref('users/$uid/balance').get();
-    final value = snapshot.value;
-    return value is num ? value.toDouble() : 0;
+  Future<Money> getBalance(String uid, {String currencyCode = 'NGN'}) async {
+    final normalizedCode = currencyCode.toUpperCase();
+    Money.fractionDigitsFor(normalizedCode);
+    final walletSnapshot = await _db
+        .ref('users/$uid/wallets/$normalizedCode/balanceMinor')
+        .get();
+    if (walletSnapshot.value != null) {
+      final walletBalance = walletSnapshot.value;
+      if (walletBalance is! int) {
+        throw StateError('Stored wallet balance must be integer minor units.');
+      }
+      return Money.fromMinorUnits(
+        currencyCode: normalizedCode,
+        minorUnits: walletBalance,
+      );
+    }
+
+    if (normalizedCode == 'NGN') {
+      final legacySnapshot = await _db.ref('users/$uid/balance').get();
+      final value = legacySnapshot.value;
+      if (value is num) {
+        return Money.fromMajor(
+          currencyCode: normalizedCode,
+          amount: value.toString(),
+        );
+      }
+    }
+    return Money.zero(normalizedCode);
   }
 
   // Get Transactions Stream
@@ -84,12 +75,12 @@ class DatabaseService {
     required String uid,
     required String name,
     required String phone,
-    String? photoUrl,
+    String? photoPath,
   }) async {
     final Map<String, dynamic> updates = {'name': name, 'phone': phone};
-    if (photoUrl != null) {
-      updates['photoUrl'] = photoUrl;
+    if (photoPath != null) {
+      updates['photoPath'] = photoPath;
     }
-    await _db.ref('users/$uid').update(updates);
+    await _db.ref('users/$uid/profile').update(updates);
   }
 }

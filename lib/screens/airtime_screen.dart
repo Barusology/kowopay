@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kowopay/providers/core_providers.dart';
+import 'package:kowopay/models/money.dart';
 
 class AirtimeScreen extends ConsumerStatefulWidget {
   const AirtimeScreen({super.key});
@@ -37,21 +38,28 @@ class _AirtimeScreenState extends ConsumerState<AirtimeScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await ref
+      final amount = Money.fromMajor(
+        currencyCode: 'NGN',
+        amount: _amountController.text.trim(),
+      );
+      final receipt = await ref
           .read(paymentServiceProvider)
           .purchaseAirtime(
             phoneNumber: _phoneController.text.trim(),
-            amount: double.parse(_amountController.text.trim()),
+            amount: amount,
             carrier: _selectedCarrier!,
           );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Airtime purchases are not available yet.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: Text(
+              'Airtime purchase confirmed: ${receipt.amount.format(locale: 'en_NG')}',
+            ),
+            backgroundColor: Colors.green,
           ),
         );
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -136,12 +144,21 @@ class _AirtimeScreenState extends ConsumerState<AirtimeScreen> {
                   if (v == null || v.trim().isEmpty) {
                     return 'Please enter an amount';
                   }
-                  final parsed = double.tryParse(v.trim());
-                  if (parsed == null) {
+                  final Money parsed;
+                  try {
+                    parsed = Money.fromMajor(
+                      currencyCode: 'NGN',
+                      amount: v.trim(),
+                    );
+                  } on FormatException {
+                    return 'Please enter a valid amount';
+                  } on RangeError {
+                    return 'Please enter a valid amount';
+                  } on ArgumentError {
                     return 'Please enter a valid amount';
                   }
                   // FIX: validate positive amount above minimum.
-                  if (parsed < 50) {
+                  if (parsed.minorUnits < 5000) {
                     return 'Minimum airtime amount is ₦50';
                   }
                   return null;
