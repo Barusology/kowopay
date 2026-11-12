@@ -1,10 +1,18 @@
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'dart:typed_data';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import 'package:kowopay/providers/auth_provider.dart';
 import 'package:kowopay/providers/core_providers.dart';
+import 'package:kowopay/services/storage_service.dart';
+import 'package:kowopay/theme/app_theme.dart';
+import 'package:kowopay/utils/rate_limiter.dart';
+import 'package:kowopay/utils/secure_logger.dart';
+import 'package:kowopay/utils/validators.dart';
+import 'package:kowopay/widgets/app_surfaces.dart';
+import 'package:kowopay/widgets/user_avatar.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -14,9 +22,9 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
   String _email = '';
   String? _photoUrl;
@@ -27,112 +35,109 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // FIX: load initial profile data via addPostFrameCallback so we are NOT
-    // mutating state during the first build phase.  The previous implementation
-    // set _nameController.text inside the StreamBuilder builder, which caused
-    // the "setState() called during build" exception.
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadProfile());
   }
 
   @override
   void dispose() {
-    // FIX: both controllers were never disposed — memory leak on every
-    // open/close of the profile screen.
     _nameController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
 
   Future<void> _loadProfile() async {
-    final user = ref.read(authServiceProvider).currentUser;
+    final User? user = ref.read(authServiceProvider).currentUser;
     if (user == null || !mounted) return;
-
+    _email = user.email ?? '';
     try {
-      final db = ref.read(databaseServiceProvider);
-      final data = await db.getUserOnce(user.uid);
+      final Map<String, dynamic>? data =
+          await ref.read(databaseServiceProvider).getUserOnce(user.uid);
       if (mounted && data != null) {
         setState(() {
-          _nameController.text = data['name'] as String? ?? '';
-          _phoneController.text = data['phone'] as String? ?? '';
-          _email = data['email'] as String? ?? user.email ?? '';
+          _nameController.text = (data['name'] as String?) ??
+              (user.displayName ?? '');
+          _phoneController.text = (data['phone'] as String?) ?? '';
           _photoUrl = data['photoUrl'] as String?;
         });
-      } else if (mounted) {
-        setState(() => _email = user.email ?? '');
       }
-    } catch (_) {
-      if (mounted) setState(() => _email = user.email ?? '');
+    } catch (e) {
+      SecureLog.error('Profile load', e);
     }
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile =
-        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      if (mounted) {
-        setState(() {
-          _imageBytes = bytes;
-          _isEditing = true;
-        });
-      }
+    if (!RateLimiter.allow('pick-image', const Duration(seconds: 1))) return;
+    final XFile? picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 78,
+      maxWidth: 1600,
+      maxHeight: 1600,
+    );
+    if (picked == null) return;
+
+    final Uint8List bytes = await picked.readAsBytes();
+    final String? validationError = ImageFileValidator.validate(bytes);
+    if (!mounted) return;
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(validationError), backgroundColor: AppColors.danger),
+      );
+      return;
     }
+    setState(() {
+      _imageBytes = bytes;
+      _isEditing = true;
+    });
   }
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!RateLimiter.allow('save-profile', const Duration(seconds: 2))) return;
 
     setState(() => _isLoading = true);
-
     try {
-      final user = ref.read(authServiceProvider).currentUser;
+      final User? user = ref.read(authServiceProvider).currentUser;
       if (user == null) return;
 
       String? newPhotoUrl;
-
       if (_imageBytes != null) {
-        // FIX: debugPrint instead of print — print() is not stripped in release
-        // builds and logs sensitive URLs to Android logcat (readable by other apps).
-        debugPrint('[Profile] Starting image upload…');
         newPhotoUrl = await ref
             .read(storageServiceProvider)
             .uploadProfileImage(_imageBytes!, user.uid);
-        debugPrint('[Profile] Upload complete');
       }
 
       await ref.read(databaseServiceProvider).updateProfile(
             uid: user.uid,
-            name: _nameController.text.trim(),
-            phone: _phoneController.text.trim(),
+            name: InputSanitizer.cleanText(_nameController.text, maxLength: 80),
+            phone: InputSanitizer.cleanPhone(_phoneController.text),
             photoUrl: newPhotoUrl,
           );
 
+      if (!mounted) return;
+      setState(() {
+        _isEditing = false;
+        _imageBytes = null;
+        if (newPhotoUrl != null) _photoUrl = newPhotoUrl;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } on StorageException catch (e) {
       if (mounted) {
-        setState(() {
-          _isEditing = false;
-          _imageBytes = null;
-          if (newPhotoUrl != null) _photoUrl = newPhotoUrl;
-        });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: Colors.green,
-          ),
+          SnackBar(content: Text(e.message), backgroundColor: AppColors.danger),
         );
       }
-    } catch (e, stack) {
-      // FIX: debugPrint instead of print — never log full stack traces with
-      // print(); use debugPrint which is automatically suppressed in release.
-      debugPrint('[Profile] Save error: $e\n$stack');
+    } catch (e) {
+      SecureLog.error('Profile save', e);
       if (mounted) {
-        // FIX: friendly error message — the original code showed `Text('Failed: $e')`
-        // which leaks internal exception details to the user.
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Profile update failed. Please try again.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 4),
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -143,122 +148,124 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authStateProvider).valueOrNull;
+    final User? user = ref.watch(authStateProvider).valueOrNull;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Profile'),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: Icon(_isEditing ? Icons.check : Icons.edit),
-            onPressed: _isLoading
-                ? null
-                : () {
-                    if (_isEditing) {
-                      _saveProfile();
-                    } else {
-                      setState(() => _isEditing = true);
-                    }
-                  },
-          ),
-        ],
-      ),
+    return CinematicScaffold(
+      title: 'My profile',
+      actions: [
+        IconButton(
+          tooltip: _isEditing ? 'Save' : 'Edit',
+          icon: Icon(_isEditing ? Icons.check_rounded : Icons.edit_outlined),
+          onPressed: _isLoading
+              ? null
+              : () {
+                  if (_isEditing) {
+                    _saveProfile();
+                  } else {
+                    setState(() => _isEditing = true);
+                  }
+                },
+        ),
+      ],
       body: user == null
-          ? const Center(child: Text('User not logged in'))
+          ? const Center(child: Text('Please sign in again.'))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
               child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Profile photo
+                    const SizedBox(height: 8),
                     GestureDetector(
                       onTap: _isEditing ? _pickImage : null,
                       child: Stack(
                         alignment: Alignment.bottomRight,
                         children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: Colors.grey[200],
-                            backgroundImage: _imageBytes != null
-                                ? MemoryImage(_imageBytes!)
-                                : (_photoUrl != null
-                                    ? NetworkImage(_photoUrl!)
-                                        as ImageProvider
-                                    : null),
-                            child:
-                                (_imageBytes == null && _photoUrl == null)
-                                    ? const Icon(Icons.person, size: 50)
-                                    : null,
-                          ),
+                          _imageBytes != null
+                              ? CircleAvatar(
+                                  radius: 54,
+                                  backgroundColor: AppColors.lilac,
+                                  backgroundImage: MemoryImage(_imageBytes!),
+                                )
+                              : UserAvatar(
+                                  photoUrl: _photoUrl,
+                                  email: _email,
+                                  radius: 54,
+                                ),
                           if (_isEditing)
-                            CircleAvatar(
-                              radius: 14,
-                              backgroundColor: Colors.deepPurple,
-                              child: const Icon(Icons.camera_alt,
-                                  size: 14, color: Colors.white),
+                            Container(
+                              padding: const EdgeInsets.all(9),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: AppColors.buttonGradient,
+                                border: Border.all(
+                                  color: AppColors.white,
+                                  width: 2.5,
+                                ),
+                              ),
+                              child: const Icon(Icons.camera_alt_outlined,
+                                  size: 15, color: AppColors.white),
                             ),
                         ],
                       ),
                     ),
                     if (_isEditing)
                       const Padding(
-                        padding: EdgeInsets.only(top: 8),
+                        padding: EdgeInsets.only(top: 10),
                         child: Text(
-                          'Tap to change photo',
+                          'Tap the photo to change it',
                           style: TextStyle(
-                              fontSize: 12, color: Colors.deepPurple),
+                            fontSize: 11,
+                            color: AppColors.inkMuted,
+                          ),
                         ),
                       ),
-                    const SizedBox(height: 20),
-
-                    // Email (read-only)
-                    TextFormField(
-                      initialValue: _email,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        filled: true,
-                        prefixIcon: Icon(Icons.email_outlined),
+                    const SizedBox(height: 24),
+                    GlassCard(
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            initialValue: _email,
+                            readOnly: true,
+                            enabled: false,
+                            decoration: const InputDecoration(
+                              labelText: 'Email',
+                              prefixIcon: Icon(Icons.email_outlined),
+                              suffixIcon: Icon(Icons.verified_outlined),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            key: const Key('nameField'),
+                            controller: _nameController,
+                            enabled: _isEditing,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Full name',
+                              prefixIcon: Icon(Icons.person_outline),
+                            ),
+                            validator: Validators.fullName,
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            key: const Key('phoneField'),
+                            controller: _phoneController,
+                            enabled: _isEditing,
+                            keyboardType: TextInputType.phone,
+                            decoration: const InputDecoration(
+                              labelText: 'Phone number',
+                              prefixIcon: Icon(Icons.phone_outlined),
+                            ),
+                            validator: Validators.phone,
+                          ),
+                        ],
                       ),
-                      readOnly: true,
-                      enabled: false,
                     ),
-                    const SizedBox(height: 16),
-
-                    // Full name
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Full Name',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person_outline),
+                    if (_isLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 24),
+                        child: CircularProgressIndicator(),
                       ),
-                      enabled: _isEditing,
-                      textInputAction: TextInputAction.next,
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty)
-                              ? 'Name is required'
-                              : null,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Phone
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone Number',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.phone_outlined),
-                      ),
-                      enabled: _isEditing,
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.done,
-                    ),
-                    const SizedBox(height: 32),
-
-                    if (_isLoading) const CircularProgressIndicator(),
                   ],
                 ),
               ),

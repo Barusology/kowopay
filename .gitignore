@@ -48,3 +48,26 @@ app.*.map.json
 /kowopay/
 /kowopay_fixed/
 .vscode/
+
+# Secrets and environment files — never commit real values
+.env
+.env.*
+!.env.example
+functions/.env
+functions/.env.*
+!functions/.env.example
+key.properties
+android/key.properties
+*.jks
+*.keystore
+*.pem
+serviceAccount*.json
+*-firebase-adminsdk-*.json
+
+# Cloud Functions dependencies
+functions/node_modules/
+
+# Stray local artifacts that must not be tracked
+Docker Desktop.lnk
+android/app/google-services (4).json
+

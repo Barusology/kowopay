@@ -1,11 +1,11 @@
 {
-    "name": "kowopay",
-    "short_name": "kowopay",
+    "name": "KowoPay",
+    "short_name": "KowoPay",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#6D28D9",
+    "description": "KowoPay — send money, buy airtime, pay bills and manage your wallet securely.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

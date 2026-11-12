@@ -3,6 +3,7 @@ class AppRoutes {
   static const onboarding = '/onboarding';
   static const login = '/login';
   static const register = '/register';
+  static const verifyEmail = '/verify-email';
   static const home = '/home';
   static const deposit = '/deposit';
   static const withdraw = '/withdraw';
@@ -13,4 +14,7 @@ class AppRoutes {
   static const settings = '/settings';
   static const help = '/help';
   static const insurance = '/insurance';
+
+  /// Guarded by the `admin` custom claim; see [AdminScreen].
+  static const admin = '/admin';
 }

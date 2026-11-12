@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:kowopay/providers/auth_provider.dart';
 import 'package:kowopay/providers/core_providers.dart';
+import 'package:kowopay/services/wallet_service.dart';
+import 'package:kowopay/theme/app_theme.dart';
+import 'package:kowopay/utils/rate_limiter.dart';
+import 'package:kowopay/utils/secure_logger.dart';
+import 'package:kowopay/utils/validators.dart';
+import 'package:kowopay/widgets/app_surfaces.dart';
 
 class AirtimeScreen extends ConsumerStatefulWidget {
   const AirtimeScreen({super.key});
@@ -11,13 +16,14 @@ class AirtimeScreen extends ConsumerStatefulWidget {
 }
 
 class _AirtimeScreenState extends ConsumerState<AirtimeScreen> {
-  final _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _amountController = TextEditingController();
+
   String? _selectedCarrier;
-  final _phoneController = TextEditingController();
-  final _amountController = TextEditingController();
   bool _isLoading = false;
 
-  static const List<String> _carriers = ['MTN', 'Airtel', 'Glo', '9mobile'];
+  static const List<String> _carriers = <String>['MTN', 'Airtel', 'Glo', '9mobile'];
 
   @override
   void dispose() {
@@ -27,176 +33,126 @@ class _AirtimeScreenState extends ConsumerState<AirtimeScreen> {
   }
 
   Future<void> _buyAirtime() async {
+    if (!_formKey.currentState!.validate()) return;
     if (_selectedCarrier == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a network provider')),
-      );
+      _snack('Please select a network provider', AppColors.warning);
       return;
     }
-    if (!_formKey.currentState!.validate()) return;
+    if (!RateLimiter.allow('airtime', const Duration(seconds: 3))) return;
+
+    final double amount =
+        double.parse(InputSanitizer.cleanAmount(_amountController.text));
 
     setState(() => _isLoading = true);
-
     try {
-      final user = ref.read(authServiceProvider).currentUser;
-      if (user == null) throw Exception('User not authenticated');
-
-      final amount = double.parse(_amountController.text.trim());
-      final db = ref.read(databaseServiceProvider);
-
-      // FIX: the original code split balance deduction and transaction logging
-      // into two separate database writes.  If the network dropped between them,
-      // the user's balance was reduced but no transaction record was written —
-      // money silently disappears with no audit trail.
-      //
-      // The correct solution is a single atomic multi-path update in Firebase
-      // Realtime Database (or a Firestore batch write) so both succeed or both
-      // fail together.
-      //
-      // Ideal production approach: move this to a Firebase Cloud Function so
-      // the client cannot manipulate the balance directly.
-      final success = await db.deductBalanceAndLog(
-        uid: user.uid,
-        amount: amount,
-        title: 'Airtime – $_selectedCarrier',
-        isCredit: false,
-      );
-
-      if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Airtime purchase successful!'),
-              backgroundColor: Colors.green,
-            ),
+      await ref.read(walletServiceProvider).purchaseAirtime(
+            amount: amount,
+            carrier: _selectedCarrier!,
+            phone: InputSanitizer.cleanPhone(_phoneController.text),
           );
-          Navigator.pop(context);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Insufficient balance'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+      if (!mounted) return;
+      _snack('Airtime purchase successful.', AppColors.success);
+      Navigator.pop(context);
+    } on WalletException catch (e) {
+      _snack(e.message, AppColors.danger);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Purchase failed. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      SecureLog.error('Airtime purchase', e);
+      _snack('Purchase failed. Please try again.', AppColors.danger);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  void _snack(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Buy Airtime'),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+    return CinematicScaffold(
+      title: 'Buy airtime',
+      body: SingleChildScrollView(
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Select Network',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.signal_cellular_alt),
+              const SectionTitle('Top up any network'),
+              const SizedBox(height: 14),
+              GlassCard(
+                child: Column(
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedCarrier,
+                      decoration: const InputDecoration(
+                        labelText: 'Network',
+                        prefixIcon: Icon(Icons.signal_cellular_alt_rounded),
+                      ),
+                      items: _carriers
+                          .map((carrier) => DropdownMenuItem<String>(
+                                value: carrier,
+                                child: Text(carrier),
+                              ))
+                          .toList(),
+                      onChanged: (value) =>
+                          setState(() => _selectedCarrier = value),
+                      validator: (v) =>
+                          v == null ? 'Please select a network' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      key: const Key('phoneField'),
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone number',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                      ),
+                      validator: (value) =>
+                          Validators.phone(value, required: true),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      key: const Key('amountField'),
+                      controller: _amountController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: false),
+                      decoration: const InputDecoration(
+                        labelText: 'Amount',
+                        prefixText: '₦ ',
+                        prefixIcon: Icon(Icons.payments_outlined),
+                      ),
+                      validator: (value) =>
+                          Validators.amount(value, min: 50, max: 50000),
+                    ),
+                  ],
                 ),
-                value: _selectedCarrier,
-                items: _carriers
-                    .map((c) =>
-                        DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) => setState(() => _selectedCarrier = v),
-                validator: (v) =>
-                    v == null ? 'Please select a network provider' : null,
               ),
-              const SizedBox(height: 16),
-
-              TextFormField(
-                key: const Key('phoneField'),
-                controller: _phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.phone),
-                ),
-                keyboardType: TextInputType.phone,
-                textInputAction: TextInputAction.next,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Please enter a phone number';
-                  }
-                  if (v.trim().length < 10) {
-                    return 'Please enter a valid phone number';
-                  }
-                  return null;
-                },
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final int preset in const [100, 200, 500, 1000])
+                    ActionChip(
+                      label: Text('₦$preset'),
+                      backgroundColor: AppColors.white,
+                      side: const BorderSide(color: AppColors.outline),
+                      onPressed: () => setState(
+                          () => _amountController.text = preset.toString()),
+                    ),
+                ],
               ),
-              const SizedBox(height: 16),
-
-              TextFormField(
-                key: const Key('amountField'),
-                controller: _amountController,
-                decoration: const InputDecoration(
-                  labelText: 'Amount (₦)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.attach_money),
-                  hintText: 'Minimum ₦50',
-                ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: false),
-                textInputAction: TextInputAction.done,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Please enter an amount';
-                  }
-                  final parsed = double.tryParse(v.trim());
-                  if (parsed == null) {
-                    return 'Please enter a valid amount';
-                  }
-                  // FIX: validate positive amount above minimum.
-                  if (parsed < 50) {
-                    return 'Minimum airtime amount is ₦50';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 32),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _buyAirtime,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Buy Airtime',
-                          style: TextStyle(fontSize: 16)),
-                ),
+              const SizedBox(height: 24),
+              GradientButton(
+                label: 'Buy airtime',
+                icon: Icons.flash_on_rounded,
+                loading: _isLoading,
+                onPressed: _isLoading ? null : _buyAirtime,
               ),
             ],
           ),

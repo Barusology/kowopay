@@ -1,21 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:flutterwave_standard/flutterwave.dart';
-import 'package:uuid/uuid.dart';
+import 'package:kowopay/config/app_config.dart';
+
+class PaymentResult {
+  const PaymentResult({
+    required this.success,
+    required this.cancelled,
+    required this.message,
+  });
+
+  final bool success;
+  final bool cancelled;
+  final String message;
+}
 
 class PaymentService {
+  PaymentService({String? publicKey})
+      : publicKey = publicKey ?? AppConfig.flutterwavePublicKey;
+
+  /// Flutterwave publishes this key; it is still injected at build time so it
+  /// is not baked into a single shared binary.
   final String publicKey;
 
-  PaymentService({required this.publicKey});
+  bool get isConfigured => publicKey.isNotEmpty;
 
-  Future<void> makePayment({
+  Future<PaymentResult> makePayment({
     required BuildContext context,
     required String email,
     required String fullName,
     required String phoneNumber,
     required String amount,
     required String txRef,
-    required Function(String) onResult, 
   }) async {
+    if (!isConfigured) {
+      return const PaymentResult(
+        success: false,
+        cancelled: false,
+        message: 'Payments are not configured for this build.',
+      );
+    }
+
     final Customer customer = Customer(
       name: fullName,
       phoneNumber: phoneNumber,
@@ -24,42 +48,37 @@ class PaymentService {
 
     final Flutterwave flutterwave = Flutterwave(
       publicKey: publicKey,
-      currency: "NGN",
-      redirectUrl: "https://google.com",
+      currency: 'NGN',
+      redirectUrl: AppConfig.flutterwaveRedirectUrl,
       txRef: txRef,
       amount: amount,
       customer: customer,
-      paymentOptions: "card, payattitude, barter, bank transfer, ussd",
-      customization: Customization(title: "KowoPay Deposit"),
-      isTestMode: true,
+      paymentOptions: 'card, payattitude, barter, bank transfer, ussd',
+      customization: Customization(title: 'KowoPay Deposit'),
+      isTestMode: AppConfig.flutterwaveTestMode,
     );
 
     try {
       final ChargeResponse response = await flutterwave.charge(context);
-      // Inspecting the package, charge returns dynamic or Future<ChargeResponse>
-      // If the error persists, it might be that charge() doesn't need await or returns something else.
-      // However, usually it is await flutterwave.charge().
-      
-      if (response != null) {
-        if (response.success == true) {
-          onResult("Transaction Successful! Ref: ${response.txRef}");
-        } else {
-           onResult("Transaction Failed!");
-        }
-      } else {
-        onResult("Transaction Cancelled");
+      if (response.success == true) {
+        return PaymentResult(
+          success: true,
+          cancelled: false,
+          message: 'Payment submitted. Your wallet is credited after the '
+              'payment provider confirms the transaction.',
+        );
       }
-    } catch (error) {
-       onResult("Error: $error");
+      return const PaymentResult(
+        success: false,
+        cancelled: true,
+        message: 'Payment was not completed.',
+      );
+    } catch (_) {
+      return const PaymentResult(
+        success: false,
+        cancelled: false,
+        message: 'Payment failed. Please try again.',
+      );
     }
-  }
-
-  Future<bool> withdrawToBank({
-    required String bankCode,
-    required String accountNumber,
-    required double amount,
-  }) async {
-    await Future.delayed(const Duration(seconds: 2));
-    return true; 
   }
 }

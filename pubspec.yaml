@@ -36,13 +36,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   firebase_core: ^4.3.0
   firebase_auth: ^6.1.3
-  smooth_page_indicator: ^1.0.0+2
   shared_preferences: ^2.5.3
   flutter_riverpod: ^2.6.1
-  email_validator: ^3.0.0
   flutterwave_standard: ^1.0.6
-  google_generative_ai: ^0.4.6
-  intl: ^0.20.2
   uuid: ^4.2.2
   firebase_database: ^12.1.1
   url_launcher: ^6.3.2
@@ -50,6 +46,7 @@ dependencies:
   firebase_storage: ^13.0.5
   google_mobile_ads: ^6.0.0
   device_preview: ^1.2.0
+  cloud_functions: ^6.5.1
 
 dev_dependencies:
   flutter_test:

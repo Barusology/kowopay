@@ -4,7 +4,7 @@
 
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter)
 ![Firebase](https://img.shields.io/badge/Firebase-Auth%20%2B%20DB-FFCA28?style=for-the-badge&logo=firebase)
-![Dart](https://img.shields.io/badge/Dart-2.x-0175C2?style=for-the-badge&logo=dart)
+![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart)
 ![Flutterwave](https://img.shields.io/badge/Payments-Flutterwave-0B4F6C?style=for-the-badge)
 ![AI](https://img.shields.io/badge/AI-Gemini%20Assistant-8A2BE2?style=for-the-badge)
 
@@ -71,11 +71,12 @@ KowoPay is built for users who want a secure and intuitive mobile finance experi
 - Firebase Auth
 - Firebase Realtime Database
 - Firebase Storage
+- Cloud Functions for Firebase
+- Firebase Security Rules
 - Riverpod
 - SharedPreferences
 - Flutterwave
 - Google Mobile Ads
-- Google Generative AI
 - URL Launcher and image picker
 
 ## Project Structure
@@ -85,23 +86,27 @@ KowoPay is built for users who want a secure and intuitive mobile finance experi
 ├── android/                 # Android project files
 ├── ios/                     # iOS project files
 ├── lib/
-│   ├── models/              # App data models
+│   ├── config/              # Build-time configuration (no secrets)
 │   ├── providers/           # State management providers
 │   ├── screens/             # UI flows and screens
 │   ├── services/            # Firebase and business logic services
-│   ├── main.dart            # App entry point
-│   ├── routes.dart          # Route configuration
-│   └── ...
+│   ├── theme/               # White + purple design system
+│   ├── utils/               # Validators, sanitizers, rate limits, logging
+│   ├── widgets/             # Shared cinematic UI components
+│   ├── main.dart            # App entry point and auth gate
+│   └── routes.dart          # Route configuration
+├── functions/               # Cloud Functions (money, AI, webhook, admin)
 ├── test/                    # Automated tests
 ├── web/                     # Web support files
 ├── windows/                 # Windows project files
 ├── linux/                   # Linux project files
 ├── macos/                   # macOS project files
+├── database.rules.json      # Realtime Database access rules
+├── storage.rules            # Storage access rules
+├── firebase.json            # Hosting headers, rules and functions config
 ├── pubspec.yaml             # Dependencies and metadata
-├── analysis_options.yaml    # Linting rules
-├── .gitignore
-├── README.md
-└── ...
+├── SECURITY.md              # Security audit and deployment checklist
+└── README.md
 ```
 
 ## Quick Start
@@ -133,8 +138,11 @@ flutter pub get
 
 ### Run the App
 
+Copy the example configuration and fill in the public client values:
+
 ```bash
-flutter run
+cp .env.example .env
+flutter run --dart-define-from-file=.env
 ```
 
 For a specific device:
@@ -144,34 +152,58 @@ flutter devices
 flutter run -d <device-id>
 ```
 
+### Cloud Functions
+
+```bash
+cd functions
+npm install
+cd ..
+cp functions/.env.example functions/.env   # fill in secrets locally
+firebase functions:secrets:set GEMINI_API_KEY
+firebase functions:secrets:set FLUTTERWAVE_SECRET_HASH
+firebase functions:secrets:set FLUTTERWAVE_SECRET_KEY
+firebase deploy --only database,storage,functions
+```
+
+Wallet credits, withdrawals, airtime, AI advice and admin claims run only on
+the server. See [SECURITY.md](SECURITY.md) for the full threat model, the key
+rotation that is still required, and the production checklist.
+
 ## Build & Deployment
 
 ### Android
 
 ```bash
-flutter build apk
+flutter build apk --dart-define-from-file=.env
 ```
 
 ### iOS
 
 ```bash
-flutter build ios
+flutter build ios --dart-define-from-file=.env
 ```
 
 ### Web
 
 ```bash
-flutter build web
+flutter build web --release --dart-define-from-file=.env
+firebase deploy --only hosting
 ```
 
 ## Security & Configuration Notes
 
-This app integrates with external services and credentials. For production use, ensure that:
-
-- API keys and secrets are stored securely
-- Firebase config is environment-specific
-- Payment provider credentials are not committed to source control
-- Environment-specific builds are isolated from development settings
+- No secret is committed. Payment/AI secret keys live in Cloud Functions
+  secrets; the Flutterwave public key and redirect URL are injected at build
+  time.
+- Users can only read their own database subtree. Balance, ledger and
+  notifications are server-written.
+- Admin access requires the `admin` custom claim, enforced by both the UI and
+  the database rules.
+- Email verification is required before any financial screen is reachable.
+- HTTP security headers (CSP, HSTS, X-Frame-Options, Permissions-Policy) are
+  configured in `firebase.json`.
+- Rotate the historical Gemini key referenced in SECURITY.md before any public
+  release.
 
 ## Contributing
 

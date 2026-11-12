@@ -1,26 +1,29 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/payment_service.dart';
-import '../services/ai_service.dart';
-import '../services/database_service.dart';
-import '../services/storage_service.dart';
-import '../services/ad_service.dart';
+import 'package:kowopay/services/ad_service.dart';
+import 'package:kowopay/services/ai_service.dart';
+import 'package:kowopay/services/database_service.dart';
+import 'package:kowopay/services/payment_service.dart';
+import 'package:kowopay/services/storage_service.dart';
+import 'package:kowopay/services/wallet_service.dart';
 
-// IMPORTANT: Replace with real keys from ENV or remote config
-const String FLUTTERWAVE_PUBLIC_KEY = "FLWPUBK_TEST-XXXXXXXXXX-X"; 
-const String GEMINI_API_KEY = "AIzaSyBog1Kcb5BmZN8f2WX0uNLjgK_DyGl7Xyg"; 
-
+// Provider keys are injected at build time (`--dart-define`) or held in Cloud
+// Functions environment variables. No credentials live in source control.
 final paymentServiceProvider = Provider<PaymentService>((ref) {
-  return PaymentService(publicKey: FLUTTERWAVE_PUBLIC_KEY);
+  return PaymentService();
 });
 
-
-
 final aiServiceProvider = Provider<AIService>((ref) {
-  return AIService(apiKey: GEMINI_API_KEY);
+  return AIService();
+});
+
+final walletServiceProvider = Provider<WalletService>((ref) {
+  return WalletService();
 });
 
 final databaseServiceProvider = Provider<DatabaseService>((ref) {
-  return DatabaseService();
+  final DatabaseService service = DatabaseService();
+  ref.onDispose(service.dispose);
+  return service;
 });
 
 final storageServiceProvider = Provider<StorageService>((ref) {
@@ -30,5 +33,3 @@ final storageServiceProvider = Provider<StorageService>((ref) {
 final adServiceProvider = Provider<AdService>((ref) {
   return AdService();
 });
-
-

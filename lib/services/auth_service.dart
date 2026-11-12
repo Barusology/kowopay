@@ -1,20 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:kowopay/utils/secure_logger.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ABSTRACT INTERFACE
 // All widgets and providers depend on AuthRepository, never on the concrete
-// FirebaseAuthService.  This makes the auth layer fully testable without
-// Firebase and lets you swap implementations (Google, Apple, biometric) without
-// touching any consumer.
+// FirebaseAuthService. This keeps the auth layer testable and swappable.
 // ─────────────────────────────────────────────────────────────────────────────
 
 abstract class AuthRepository {
-  /// Stream that emits the current [User] or null on sign-out.
   Stream<User?> get authStateChanges;
-
-  /// The synchronously available current user (may lag one tick behind the
-  /// stream).  Prefer watching [authStateProvider] in widgets.
   User? get currentUser;
 
   Future<UserCredential> signInWithEmailAndPassword(
@@ -23,14 +17,12 @@ abstract class AuthRepository {
   Future<UserCredential> registerWithEmailAndPassword(
       String email, String password);
 
+  Future<void> sendVerificationEmail();
+  Future<void> sendPasswordResetEmail(String email);
+  Future<bool> reloadUser();
+  Future<bool> hasAdminClaim();
   Future<void> signOut();
-
-  /// Force-refresh the Firebase ID token.  Call when the app returns to
-  /// foreground to detect revoked / disabled accounts before any financial
-  /// operation is attempted.
   Future<void> refreshToken();
-
-  /// Release any resources held by this service (stream subscriptions, etc.).
   void dispose();
 }
 
@@ -39,8 +31,7 @@ abstract class AuthRepository {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class FirebaseAuthService implements AuthRepository {
-  FirebaseAuthService({FirebaseAuth? auth})
-      : _auth = auth ?? FirebaseAuth.instance;
+  FirebaseAuthService({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseAuth _auth;
 
@@ -52,23 +43,59 @@ class FirebaseAuthService implements AuthRepository {
 
   @override
   Future<UserCredential> signInWithEmailAndPassword(
-      String email, String password) async {
-    // Intentionally do NOT trim the password — spaces may be intentional.
+      String email, String password) {
+    // Never trim the password — spaces may be intentional.
     return _auth.signInWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
-    // FirebaseAuthException is not caught here — it should propagate to the UI
-    // layer so the correct error code can be mapped to a user-friendly message.
   }
 
   @override
   Future<UserCredential> registerWithEmailAndPassword(
       String email, String password) async {
-    return _auth.createUserWithEmailAndPassword(
+    final UserCredential credential = await _auth.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password, // never trim passwords
     );
+    // Ask Firebase to send the verification link immediately. The app gates all
+    // financial screens behind emailVerified.
+    await credential.user?.sendEmailVerification();
+    return credential;
+  }
+
+  @override
+  Future<void> sendVerificationEmail() async {
+    final User? user = _auth.currentUser;
+    if (user == null) return;
+    if (user.emailVerified) return;
+    await user.sendEmailVerification();
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
+  }
+
+  @override
+  Future<bool> reloadUser() async {
+    final User? user = _auth.currentUser;
+    if (user == null) return false;
+    await user.reload();
+    return _auth.currentUser?.emailVerified ?? false;
+  }
+
+  @override
+  Future<bool> hasAdminClaim() async {
+    final User? user = _auth.currentUser;
+    if (user == null) return false;
+    try {
+      // Force refresh so a freshly granted/revoked admin claim takes effect.
+      final IdTokenResult result = await user.getIdTokenResult(true);
+      return result.claims?['admin'] == true;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
@@ -78,15 +105,15 @@ class FirebaseAuthService implements AuthRepository {
 
   @override
   Future<void> refreshToken() async {
-    final user = _auth.currentUser;
+    final User? user = _auth.currentUser;
     if (user == null) return;
     try {
-      await user.getIdToken(true); // forceRefresh: true
+      await user.getIdToken(true);
     } on FirebaseAuthException catch (e) {
-      debugPrint('[AuthService] Token refresh failed: ${e.code}');
-      // Force re-login for these codes — do NOT let stale sessions persist in
-      // a financial app.
-      if (e.code == 'user-disabled' || e.code == 'user-token-expired') {
+      SecureLog.warn('Token refresh failed: ${e.code}');
+      if (e.code == 'user-disabled' ||
+          e.code == 'user-token-expired' ||
+          e.code == 'user-not-found') {
         await signOut();
       }
       rethrow;
@@ -95,15 +122,12 @@ class FirebaseAuthService implements AuthRepository {
 
   @override
   void dispose() {
-    // FirebaseAuth streams are managed by the SDK — nothing custom to close.
-    // Add any custom StreamController.close() calls here if you extend this.
-    debugPrint('[AuthService] disposed');
+    // FirebaseAuth streams are owned by the SDK.
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TEST DOUBLE
-// Use this in widget tests via ProviderScope overrides.  Zero Firebase deps.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class FakeAuthService implements AuthRepository {
@@ -112,7 +136,7 @@ class FakeAuthService implements AuthRepository {
   final User? fakeUser;
 
   @override
-  Stream<User?> get authStateChanges => Stream.value(fakeUser);
+  Stream<User?> get authStateChanges => Stream<User?>.value(fakeUser);
 
   @override
   User? get currentUser => fakeUser;
@@ -120,8 +144,7 @@ class FakeAuthService implements AuthRepository {
   @override
   Future<UserCredential> signInWithEmailAndPassword(
       String email, String password) async {
-    throw UnimplementedError(
-        'Stub signIn — override in tests that need sign-in behaviour.');
+    throw UnimplementedError('Stub signIn — override in tests.');
   }
 
   @override
@@ -129,6 +152,18 @@ class FakeAuthService implements AuthRepository {
       String email, String password) async {
     throw UnimplementedError('Stub register');
   }
+
+  @override
+  Future<void> sendVerificationEmail() async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {}
+
+  @override
+  Future<bool> reloadUser() async => fakeUser?.emailVerified ?? false;
+
+  @override
+  Future<bool> hasAdminClaim() async => false;
 
   @override
   Future<void> signOut() async {}
@@ -140,32 +175,31 @@ class FakeAuthService implements AuthRepository {
   void dispose() {}
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPER — map Firebase error codes to user-facing strings
-// Place this here so both LoginPage and RegisterPage can import it from one
-// location without duplicating the switch statement.
-// ─────────────────────────────────────────────────────────────────────────────
-
+/// Maps Firebase error codes to user-safe strings. Raw Firebase messages leak
+/// internal codes and are confusing to end users.
 String mapAuthError(Object error) {
   if (error is FirebaseAuthException) {
     switch (error.code) {
       case 'user-not-found':
-        return 'No account found with this email address.';
-      case 'wrong-password':
       case 'invalid-credential':
-        return 'Incorrect password. Please try again.';
+      case 'wrong-password':
+        return 'Email or password is incorrect.';
       case 'too-many-requests':
-        return 'Too many failed attempts. Please wait a moment and try again.';
+        return 'Too many attempts. Please wait a moment and try again.';
       case 'user-disabled':
         return 'This account has been disabled. Please contact support.';
       case 'email-already-in-use':
         return 'An account with this email already exists.';
       case 'weak-password':
-        return 'Password is too weak. Please choose a stronger password.';
+        return 'Choose a stronger password (8+ characters).';
       case 'invalid-email':
         return 'Please enter a valid email address.';
       case 'network-request-failed':
-        return 'Network error. Please check your connection and try again.';
+        return 'Network error. Check your connection and try again.';
+      case 'requires-recent-login':
+        return 'Please sign in again to continue.';
+      case 'operation-not-allowed':
+        return 'This sign-in method is unavailable. Contact support.';
       default:
         return 'Something went wrong. Please try again.';
     }

@@ -1,0 +1,89 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      ".read": "auth != null && auth.token.admin == true",
+
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || auth.token.admin == true)",
+
+        "name": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 80"
+        },
+
+        "email": {
+          ".write": "auth != null && auth.uid == $uid && (!data.exists() || newData.val() == data.val())",
+          ".validate": "newData.isString() && newData.val().length <= 254 && newData.val().contains('@')"
+        },
+
+        "phone": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.isString() && newData.val().length >= 7 && newData.val().length <= 15 && newData.val().matches('^[0-9]+$')"
+        },
+
+        "photoUrl": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.isString() && newData.val().length <= 2048 && (newData.val().matches('^https://firebasestorage\\.googleapis\\.com/.*$') || newData.val().matches('^https://[A-Za-z0-9.-]+\\.firebasestorage\\.app/.*$'))"
+        },
+
+        "balance": {
+          ".write": "auth != null && auth.uid == $uid && (!data.exists() || data.val() == 0)",
+          ".validate": "newData.isNumber() && newData.val() == 0"
+        },
+
+        "createdAt": {
+          ".write": "auth != null && auth.uid == $uid && !data.exists()",
+          ".validate": "newData.isNumber()"
+        },
+
+        "transactions": {
+          ".write": false,
+          ".indexOn": ["timestamp"],
+          "$txnId": {
+            ".validate": "newData.hasChildren(['title', 'amount', 'isCredit', 'timestamp'])",
+            "title": { ".validate": "newData.isString() && newData.val().length <= 80" },
+            "amount": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "isCredit": { ".validate": "newData.isBoolean()" },
+            "timestamp": { ".validate": "newData.isNumber()" },
+            "type": { ".validate": "newData.isString() && newData.val().length <= 24" },
+            "status": { ".validate": "newData.isString() && newData.val().length <= 24" },
+            "reference": { ".validate": "newData.isString() && newData.val().length <= 128" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "notifications": {
+          ".write": false,
+          ".indexOn": ["timestamp"],
+          "$notificationId": {
+            ".validate": "newData.hasChildren(['title', 'read', 'timestamp'])",
+            "title": { ".validate": "newData.isString() && newData.val().length <= 80" },
+            "body": { ".validate": "newData.isString() && newData.val().length <= 240" },
+            "type": { ".validate": "newData.isString() && newData.val().length <= 24" },
+            "timestamp": { ".validate": "newData.isNumber()" },
+            "read": {
+              ".write": "auth != null && auth.uid == $uid && data.exists()",
+              ".validate": "newData.isBoolean()"
+            },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "$other": { ".validate": false }
+      }
+    },
+
+    "rateLimits": {
+      ".read": false,
+      ".write": false
+    },
+
+    "webhookEvents": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

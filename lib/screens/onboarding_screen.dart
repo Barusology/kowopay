@@ -1,7 +1,11 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:flutter/material.dart';
 import 'package:kowopay/routes.dart';
+import 'package:kowopay/theme/app_theme.dart';
+import 'package:kowopay/widgets/app_surfaces.dart';
+import 'package:kowopay/widgets/cinematic_background.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -12,12 +16,7 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   Timer? _timer;
-
-  // FIX: 5 seconds is appropriate for an onboarding splash.
-  // The original timer was set to Duration(minutes: 3) while the UI label read
-  // "(Auto-advance in 60 seconds)" — a 3× mismatch that made users think the
-  // app was frozen.
-  static const _autoAdvanceSeconds = 5;
+  static const int _autoAdvanceSeconds = 6;
 
   @override
   void initState() {
@@ -37,12 +36,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _completeOnboarding() async {
-    // Persist the flag BEFORE navigating so the check in main() sees it.
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_done', true);
-
-    // Check mounted after the async gap — the timer might fire just as the
-    // user taps the button, so both code paths arrive here.
     if (mounted) {
       Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
@@ -51,63 +46,83 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Center(
-                  child: Image.asset(
-                    // FIX: asset path without the lib/ prefix.
-                    // pubspec.yaml should list: assets: - assets/onboarding.jpg
-                    // and the file should live at assets/onboarding.jpg.
-                    'assets/onboarding.jpg',
-                    fit: BoxFit.contain,
+      backgroundColor: AppColors.white,
+      body: CinematicBackground(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const Spacer(),
+                FadeSlideIn(
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(32),
+                      color: AppColors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.purple.withValues(alpha: 0.18),
+                          blurRadius: 36,
+                          offset: const Offset(0, 16),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Image.asset(
+                        'lib/assets/onboarding.jpg',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                'Welcome to KowoPay',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Your all-in-one financial partner for seamless payments and more.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              // FIX: label now matches the actual timer duration.
-              Text(
-                '(Auto-advances in $_autoAdvanceSeconds seconds)',
-                style:
-                    const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              const SizedBox(height: 48),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _completeOnboarding,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                const Spacer(),
+                const FadeSlideIn(
+                  delay: Duration(milliseconds: 100),
+                  child: Text(
+                    'Banking that feels effortless',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.8,
+                    ),
                   ),
-                  child: const Text('Start Now',
-                      style: TextStyle(fontSize: 18)),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                const FadeSlideIn(
+                  delay: Duration(milliseconds: 160),
+                  child: Text(
+                    'Deposits, bills, airtime and smart money advice — '
+                    'all in one purple place.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.inkMuted,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 220),
+                  child: GradientButton(
+                    label: 'Get started',
+                    icon: Icons.arrow_forward_rounded,
+                    onPressed: _completeOnboarding,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Auto-advances in $_autoAdvanceSeconds seconds',
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: AppColors.inkMuted,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
